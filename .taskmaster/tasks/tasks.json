@@ -615,7 +615,7 @@
         "id": "8",
         "title": "Frontend API Client and Core Components",
         "description": "Implement the React frontend API client service and core UI components including SearchBar with debounced suggestions, QueryInterpretation display, and result card components.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2",
           "7"
@@ -630,9 +630,10 @@
             "description": "Implement frontend/src/services/api.ts with searchTrials and getSuggestions functions using the Fetch API with proper error handling, TypeScript generics, and response type validation.",
             "dependencies": [],
             "details": "Create the API client module at frontend/src/services/api.ts. Use relative API_BASE = '/api' since Vite proxy is configured to forward /api to localhost:8000. Import types from '../types' including SearchResponse and SuggestionResponse. Implement searchTrials function that accepts query string, optional page (default 1), and optional pageSize (default 10) parameters, returning Promise<SearchResponse>. Note that SearchResponse includes query_interpretation (ExtractedEntities), results (TrialResult[]), total, page, page_size, and optional clarification fields. Use encodeURIComponent for query parameter encoding. Implement getSuggestions function that returns empty array for prefixes under 2 characters, otherwise fetches from /api/suggest endpoint and returns string array from SuggestionResponse.suggestions. Add proper error handling with descriptive error messages for failed requests.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test searchTrials with mocked fetch responses for success and error cases. Test getSuggestions returns empty array for short prefixes. Test URL encoding works correctly for special characters in queries. Verify TypeScript types match SearchResponse and SuggestionResponse from types/index.ts.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:20:38.445Z"
           },
           {
             "id": 2,
@@ -642,9 +643,10 @@
               1
             ],
             "details": "Create frontend/src/components/SearchBar.tsx with useState hooks for query, suggestions, showSuggestions, and placeholderIndex. Define EXAMPLE_QUERIES array with 4 example queries (Phase 3 lung cancer, recruiting diabetes, BRCA1 breast cancer, open melanoma). Implement useEffect with setInterval for 4-second placeholder cycling. Create handleInputChange with useRef for debounce timer, clearing previous timeout and setting new 300ms delayed suggestion fetch using getSuggestions from ../services/api. Implement handleSubmit preventing default, validating non-empty query, calling onSearch prop, and hiding suggestions. Style input with Tailwind using CSS variables: bg-[var(--color-bg-card)], focus:border-[var(--color-accent)], focus:ring-[var(--color-accent)]. Use font-display class for italic serif placeholder styling. Add disabled submit button styling with bg-[var(--color-accent)] and opacity-50 when isLoading. Ensure mobile responsiveness with proper max-width constraints.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test debounce timing with jest.useFakeTimers - verify getSuggestions not called until 300ms after typing stops. Test placeholder cycling changes text every 4 seconds. Test form submission calls onSearch with trimmed query. Verify focus states apply correct accent color styling.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:20:38.448Z"
           },
           {
             "id": 3,
@@ -654,9 +656,10 @@
               2
             ],
             "details": "Extend SearchBar component to render suggestion dropdown conditionally when showSuggestions is true and suggestions array is not empty. Style dropdown ul with absolute positioning, z-10, full width, mt-2, bg-[var(--color-bg-card)], rounded-lg, shadow-lg, border border-gray-200, and animate-slideDown class. Render each suggestion as li with px-4 py-3 padding, cursor-pointer, hover:bg-[var(--color-primary)]/10 hover state, border-b border-gray-100 dividers (except last item). Implement onClick handler that sets query value, calls onSearch, and hides suggestions. Add useEffect with click event listener on document to detect outside clicks and close dropdown. Add keyboard navigation support with arrow keys for accessibility - track selectedIndex state, handle ArrowUp/ArrowDown to change selection, Enter to select. Ensure dropdown is mobile-friendly with touch-friendly tap targets (minimum 44px height).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test dropdown appears when suggestions array populated and showSuggestions true. Test clicking suggestion updates query and triggers search. Test clicking outside dropdown closes it. Test keyboard navigation with arrow keys changes highlighted item. Test Enter key selects highlighted suggestion.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:20:38.451Z"
           },
           {
             "id": 4,
@@ -664,9 +667,10 @@
             "description": "Implement QueryInterpretation component displaying extracted entities as color-coded chips with sequential fade-in animations and proper label formatting.",
             "dependencies": [],
             "details": "Create frontend/src/components/QueryInterpretation.tsx accepting entities prop of type ExtractedEntities (imported from '../types'). Define ENTITY_COLORS mapping object with Tailwind classes: phase (indigo-100/800/200), condition (teal-100/800/200), status (emerald-100/800/200), location (slate-100/800/200), keyword (amber-100/800/200), sponsor (purple-100/800/200), age_group (rose-100/800/200). Build chips array by checking each entity property. For location, use entities.location which is of type LocationFilter (not Location) with optional city, state, country fields - format as comma-separated string. Replace underscores in status with spaces. Return null if no chips. Render container div with py-4 px-6, bg-[var(--color-bg)], border-y border-gray-200. Add 'We understood:' prefix span with text-sm text-[var(--color-text-muted)] mr-3. Map chips with inline-flex flex-wrap gap-2 container, each chip as span with px-3 py-1 rounded-full text-sm font-medium border, dynamic color class, and animate-fadeIn with staggered animationDelay (i * 100ms). Use font-semibold for label portion.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test component renders null when no entities present. Test each entity type renders with correct color class. Test location formatting combines city/state/country correctly using LocationFilter interface. Test status underscore replacement works. Test animation delays are staggered correctly (0ms, 100ms, 200ms, etc.).",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:20:38.453Z"
           },
           {
             "id": 5,
@@ -674,9 +678,10 @@
             "description": "Create ResultCard component with status-colored left border using STATUS_COLORS from types, serif title styling, expandable summary section, and metadata display for phase/sponsor/enrollment.",
             "dependencies": [],
             "details": "Create frontend/src/components/ResultCard.tsx accepting trial (TrialResult) and index props. Import STATUS_COLORS and StatusValue from '../types' - STATUS_COLORS maps status values to color names ('emerald', 'amber', 'blue', 'gray', 'red', 'orange', 'slate'). Build dynamic Tailwind classes using the color names: `bg-${colorName}-100`, `text-${colorName}-800`, `border-l-${colorName}-500`. Handle StatusValue type properly - use type assertion or fallback for unknown statuses. Add useState for expanded boolean. Render card div with bg-[var(--color-bg-card)] rounded-lg shadow-sm border border-gray-200 border-l-4 with dynamic borderColor, p-5, hover:shadow-md transition-shadow, cursor-pointer, animate-fadeIn with staggered delay (index * 50ms). Add onClick toggling expanded state. Display flex header with brief_title in font-display text-lg font-semibold text-[var(--color-text)], nct_id in text-xs text-[var(--color-text-muted)] font-mono, and status badge with dynamic colors. Show metadata row with phase (formatted without 'PHASE' prefix), sponsor (trial.sponsors[0]?.name or 'Unknown'), and enrollment with toLocaleString formatting. Note: trial.conditions is Record<string, string>[] - may need to extract condition names. Conditionally render expanded section with border-t, brief_summaries_description, and facilities list formatted as city/state/country joined by pipes.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test card renders with correct status border color using STATUS_COLORS mapping. Test clicking card toggles expanded state. Test expanded section shows summary and facilities. Test sponsor falls back to 'Unknown' when empty. Test enrollment number formats with commas. Test animation delay based on index prop. Verify dynamic Tailwind classes work with STATUS_COLORS values.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:20:38.456Z"
           },
           {
             "id": 6,
@@ -688,9 +693,10 @@
               5
             ],
             "details": "Types already exist at frontend/src/types/index.ts. This subtask is to verify all components use the correct types: 1) SearchResponse uses query_interpretation (not entities) for ExtractedEntities, 2) SearchResponse uses clarification (not clarification_needed), 3) SearchResponse does not have total_pages field - calculate from total/page_size, 4) LocationFilter is the type for location (not Location), 5) TrialResult.conditions is Record<string, string>[] not string[], 6) STATUS_COLORS is already exported from types file - use it instead of defining locally, 7) Facility has zip and status fields in addition to name/city/state/country, 8) AgeCategory interface has age_category string field, 9) ExtractedEntities has confidence number and optional clarification string. Update all component imports and usages to match these exact types.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run tsc --noEmit to validate all type usages. Verify SearchResponse.query_interpretation is accessed (not .entities). Verify LocationFilter is used for location type references. Test that STATUS_COLORS import works correctly. Verify conditions array handling accounts for Record<string, string>[] type.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:20:38.458Z"
           },
           {
             "id": 7,
@@ -698,14 +704,16 @@
             "description": "Add fadeIn and slideDown keyframe animations to frontend/src/index.css for use with animate-fadeIn and animate-slideDown utility classes.",
             "dependencies": [],
             "details": "Update frontend/src/index.css (which already has Tailwind import and CSS variables configured). Add @keyframes fadeIn animation from opacity 0 to 1 with transform translateY(8px) to translateY(0) over 0.3s ease-out. Add @keyframes slideDown from opacity 0, transform translateY(-10px) to opacity 1, translateY(0) over 0.2s ease-out. Define utility classes .animate-fadeIn and .animate-slideDown applying the respective animations with animation-fill-mode: both for proper initial state handling. Note: The file already imports Tailwind via @import 'tailwindcss' and has CSS variables for colors defined. Add animations after the existing styles. Ensure animations work with prefers-reduced-motion media query by adding @media (prefers-reduced-motion: reduce) rules that disable or reduce animation duration.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify animations play correctly by inspecting elements in browser DevTools. Test fadeIn applies to ResultCard components with visible opacity/transform transition. Test slideDown applies to suggestion dropdown. Verify prefers-reduced-motion is respected.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:20:38.461Z"
           }
         ],
         "complexity": 7,
         "recommendedSubtasks": 7,
-        "expansionPrompt": "Break down frontend core components into: 1) Create api.ts with searchTrials and getSuggestions functions using fetch API with proper error handling and type safety, 2) Build SearchBar component with debounced input (300ms), cycling placeholder animation, amber focus glow, and suggestion dropdown with keyboard navigation, 3) Implement suggestion dropdown with smooth slide animation, click handling, and outside-click dismissal, 4) Create QueryInterpretation component with color-coded entity chips (indigo/teal/emerald/slate/amber), sequential entrance animation, and 'We understood:' prefix, 5) Build ResultCard component with status-colored left border, expandable details section, serif title, and metadata display, 6) Add proper TypeScript types throughout matching backend schemas, 7) Create CSS animations in index.css (fadeIn, slideDown) and configure Tailwind theme. Each subtask should be mobile-responsive."
+        "expansionPrompt": "Break down frontend core components into: 1) Create api.ts with searchTrials and getSuggestions functions using fetch API with proper error handling and type safety, 2) Build SearchBar component with debounced input (300ms), cycling placeholder animation, amber focus glow, and suggestion dropdown with keyboard navigation, 3) Implement suggestion dropdown with smooth slide animation, click handling, and outside-click dismissal, 4) Create QueryInterpretation component with color-coded entity chips (indigo/teal/emerald/slate/amber), sequential entrance animation, and 'We understood:' prefix, 5) Build ResultCard component with status-colored left border, expandable details section, serif title, and metadata display, 6) Add proper TypeScript types throughout matching backend schemas, 7) Create CSS animations in index.css (fadeIn, slideDown) and configure Tailwind theme. Each subtask should be mobile-responsive.",
+        "updatedAt": "2026-02-07T19:20:38.461Z"
       },
       {
         "id": "9",
@@ -889,9 +897,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-07T19:09:48.058Z",
+      "lastModified": "2026-02-07T19:20:38.461Z",
       "taskCount": 10,
-      "completedCount": 7,
+      "completedCount": 8,
       "tags": [
         "master"
       ]
