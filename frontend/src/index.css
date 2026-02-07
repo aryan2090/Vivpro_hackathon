@@ -1,6 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Outfit:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 
+@theme {
+  --color-teal-700: #0D4F4F;
+  --color-teal-800: #0A3D3D;
+  --color-teal-900: #082f2f;
+  --color-amber-400: #D4A843;
+  --color-amber-500: #c99a3a;
+  --font-family-serif: 'Fraunces', serif;
+  --font-family-sans: 'Outfit', sans-serif;
+}
+
 :root {
   --color-primary: #0D4F4F;
   --color-primary-light: #1A6B6B;
@@ -100,4 +110,29 @@ body {
   .animate-fadeInUp {
     animation: none;
   }
+}
+
+.font-serif {
+  font-family: 'Fraunces', serif;
+}
+
+input:focus {
+  box-shadow: 0 0 0 4px rgba(212, 168, 67, 0.2);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }

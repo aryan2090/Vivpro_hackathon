@@ -39,7 +39,7 @@ export default function ResultCard({ trial, index }: { trial: TrialResult; index
         animationDelay: `${index * 50}ms`,
       }}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
         <div className="flex-1 min-w-0">
           <h3 className="font-display text-lg font-semibold text-[var(--color-text)] leading-snug">
             {trial.brief_title}
@@ -48,7 +48,7 @@ export default function ResultCard({ trial, index }: { trial: TrialResult; index
         </div>
         {trial.overall_status && (
           <span
-            className="shrink-0 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap"
+            className="self-start shrink-0 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap"
             style={{ backgroundColor: colors.bg, color: colors.text }}
           >
             {trial.overall_status.replace(/_/g, ' ')}

@@ -93,7 +93,7 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
         <button
           type="submit"
           disabled={isLoading || !query.trim()}
-          className="px-6 py-3 rounded-lg bg-[var(--color-accent)] text-white font-medium hover:bg-[var(--color-accent-dark)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 sm:px-6 py-3 rounded-lg bg-[var(--color-accent)] text-white font-medium hover:bg-[var(--color-accent-dark)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
           {isLoading ? 'Searching...' : 'Search'}
         </button>

@@ -818,7 +818,7 @@
         "dependencies": [
           "9"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -826,9 +826,10 @@
             "description": "Create the complete frontend/src/index.css file with Google Fonts imports (Fraunces serif for headings, Outfit sans-serif for body), CSS custom properties for theme colors (teal primary #0D4F4F, amber accent #D4A843, warm gray background #F8F6F3), keyframe animations (fadeIn, slideDown, shimmer), custom scrollbar styling, and focus states with amber glow.",
             "dependencies": [],
             "details": "1. Add Google Fonts import for Fraunces (opsz,wght@9..144,400;600;700) and Outfit (wght@400;500;600) with display=swap for performance\n2. Configure Tailwind CSS import directive\n3. Define CSS custom properties in :root - --color-primary: #0D4F4F, --color-accent: #D4A843, --color-bg: #F8F6F3\n4. Set body font-family to Outfit with background-color using var(--color-bg)\n5. Create .font-serif class using Fraunces for editorial headings\n6. Implement @keyframes fadeIn animation (opacity 0→1, translateY 8px→0, duration 0.3s ease-out)\n7. Implement @keyframes slideDown animation (opacity 0→1, translateY -10px→0, duration 0.2s ease-out)\n8. Implement @keyframes shimmer animation for loading states (background-position -200%→200%, duration 1.5s infinite)\n9. Create utility classes: .animate-fadeIn, .animate-slideDown, .animate-pulse (using shimmer)\n10. Style input:focus with amber box-shadow (0 0 0 4px rgba(212, 168, 67, 0.2))\n11. Add webkit scrollbar styling (8px width, #f1f1f1 track, #c1c1c1 thumb with 4px border-radius)",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify Google Fonts load correctly by inspecting network requests for fonts.googleapis.com. Test animations by adding test classes to elements and confirming smooth transitions. Check custom scrollbar appears in webkit browsers. Validate focus states trigger on input focus. Use Chrome DevTools to verify CSS custom properties are applied correctly.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:47:39.716Z"
           },
           {
             "id": 2,
@@ -838,9 +839,10 @@
               1
             ],
             "details": "1. Import Config type from tailwindcss for TypeScript support\n2. Configure content array to include './index.html' and './src/**/*.{js,ts,jsx,tsx}'\n3. Extend theme.colors.teal with full palette: 50 #f0fdfa, 100 #ccfbf1, 200 #99f6e4, 300 #5eead4, 400 #2dd4bf, 500 #14b8a6, 600 #0d9488, 700 #0D4F4F (primary), 800 #0A3D3D, 900 #082f2f\n4. Extend theme.colors.amber with accent shades: 400 #D4A843, 500 #c99a3a\n5. Configure fontFamily.serif as ['Fraunces', 'serif'] for editorial headings\n6. Configure fontFamily.sans as ['Outfit', 'sans-serif'] for body/UI text\n7. Export configuration using 'satisfies Config' for type safety\n8. Verify plugins array is empty (no external dependencies needed)",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run Tailwind build and verify no configuration errors. Test that teal-700 class applies #0D4F4F correctly. Verify font-serif and font-sans classes apply correct font families. Use browser DevTools to inspect computed styles and confirm extended colors are available.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:47:39.718Z"
           },
           {
             "id": 3,
@@ -848,9 +850,10 @@
             "description": "Update frontend/index.html with proper HTML5 doctype, language attribute, essential meta tags (charset UTF-8, viewport for responsive design, description for SEO), and font preconnect links to fonts.googleapis.com and fonts.gstatic.com for optimal font loading performance.",
             "dependencies": [],
             "details": "1. Ensure DOCTYPE html is present at the top\n2. Add lang=\"en\" attribute to html element\n3. Add meta charset=\"UTF-8\" in head section\n4. Add meta viewport with 'width=device-width, initial-scale=1.0' for responsive design\n5. Add meta description: 'Search clinical trials using natural language'\n6. Set page title to 'Clinical Trials Search'\n7. Add preconnect link for 'https://fonts.googleapis.com' to establish early connection\n8. Add preconnect link for 'https://fonts.gstatic.com' with crossorigin attribute for font files\n9. Ensure div#root is present in body for React mounting\n10. Verify script tag loads '/src/main.tsx' with type=\"module\"",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Validate HTML using W3C validator. Check network waterfall in DevTools to confirm preconnect reduces font loading time. Verify meta viewport enables proper mobile scaling. Test that description appears in browser tab preview and search engine results simulation.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:47:39.721Z"
           },
           {
             "id": 4,
@@ -862,9 +865,10 @@
               3
             ],
             "details": "Test Case 1: 'Phase 3 lung cancer trials in the USA' - Verify phase=PHASE3, condition=lung cancer, location.country=United States are extracted and results contain Phase 3 lung cancer trials in US\nTest Case 2: 'recruiting diabetes trials near Boston' - Verify status=RECRUITING, condition=diabetes, location.city=Boston and all results show RECRUITING status\nTest Case 3: 'List all Phase 2 trials for Breast Cancer associated with BRCA1 gene' - Verify phase=PHASE2, condition=Breast Cancer, keyword=BRCA1 and results mention BRCA1\nTest Case 4: 'open melanoma trials' - Test synonym mapping 'open'->RECRUITING, verify status=RECRUITING for melanoma trials\nTest Case 5: 'cancer' - Test broad query handling, check if low confidence triggers clarification banner or returns broad results gracefully\nTest Case 6: '' (empty query) - Verify graceful error handling without crash, appropriate error message displayed\nTest Case 7: 'asdfghjkl' (gibberish) - Verify empty state with suggestions is displayed\nTest Case 8: Pagination - Submit broad query, navigate between pages, verify results update correctly and page indicators are accurate\nDocument all results with screenshots if applicable",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Execute each test case manually in the browser. Record the query interpretation displayed in the UI and compare with expected entity extraction. Verify result cards match search criteria. Check browser console for JavaScript errors during each test. Document pass/fail status for each scenario.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:53:41.442Z"
           },
           {
             "id": 5,
@@ -876,9 +880,10 @@
               3
             ],
             "details": "1. Test at 320px (small mobile): Verify search bar is full-width with adequate padding, result cards stack vertically, entity chips wrap properly, pagination controls remain accessible, no horizontal scrolling occurs, fonts remain readable at minimum sizes\n2. Test at 768px (tablet): Verify search section has appropriate margins, result cards may be 2-column if designed, query interpretation strip scales properly, clarification banner adapts to width\n3. Test at 1024px (laptop): Verify content is centered with max-width container, proper spacing between search/interpretation/results sections, hover states work correctly\n4. Test at 1440px (desktop): Verify layout uses available space without excessive stretching, typography hierarchy is maintained, generous whitespace as per PRD spec\n5. Fix any identified issues: Update Tailwind responsive classes (sm:, md:, lg:, xl:), adjust grid/flex layouts, ensure touch targets are minimum 44px on mobile, verify images/icons scale appropriately",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Use Chrome DevTools device emulation to test each breakpoint. Test on actual mobile devices if available. Use responsive design mode in Firefox for cross-validation. Check that all interactive elements are accessible at each breakpoint. Verify no content is cut off or overlapping.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:54:37.468Z"
           },
           {
             "id": 6,
@@ -892,21 +897,23 @@
               5
             ],
             "details": "1. Verify debounce timing: Type in search bar and confirm suggestions API is called after 300ms pause, not on every keystroke. Test that typing continuously does not trigger multiple API calls\n2. Test skeleton loading: Submit search query and verify skeleton cards with shimmer animation appear immediately (within 100ms) before results load\n3. Check layout shift: Use Chrome DevTools Performance panel to record search flow, verify CLS (Cumulative Layout Shift) score is below 0.1, ensure animations don't cause content to jump\n4. Verify animation performance: Check that fadeIn, slideDown, and shimmer animations run at 60fps using DevTools Performance monitor, no jank during card reveal animations\n5. Network waterfall analysis: Check that fonts are loaded with preconnect optimization, API calls are not duplicated, responses are appropriately sized\n6. Run Lighthouse audit: Target Performance score >90, Accessibility score >90, Best Practices >90. Address any flagged issues\n7. Verify staggered card animation doesn't cause visible performance degradation with 10+ results",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Use Chrome DevTools Performance panel to profile search interactions. Run Lighthouse in incognito mode for accurate scores. Test on throttled 3G network to verify skeleton loading behavior. Use requestAnimationFrame timing to verify animation performance. Document any CLS issues with before/after screenshots.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:58:06.493Z"
           }
         ],
         "complexity": 6,
         "recommendedSubtasks": 6,
-        "expansionPrompt": "Break down visual polish and testing into: 1) Complete index.css with Google Fonts import (Fraunces, Outfit), CSS variables for theme colors, keyframe animations (fadeIn, slideDown, shimmer), and custom scrollbar styling, 2) Configure tailwind.config.ts with extended color palette (teal-700 as primary, amber-400 as accent), custom font families, and animation utilities, 3) Update index.html with proper meta tags, font preconnect links, and description, 4) Execute end-to-end test scenarios covering: synonym mapping, complex multi-entity queries, clarification triggers, empty/gibberish input, and pagination, 5) Test responsive design at key breakpoints (320px, 768px, 1024px, 1440px) and fix any layout issues, 6) Performance optimization: verify debounce timing, check animation performance, ensure no layout shift. Each subtask should include verification against the PRD design specs."
+        "expansionPrompt": "Break down visual polish and testing into: 1) Complete index.css with Google Fonts import (Fraunces, Outfit), CSS variables for theme colors, keyframe animations (fadeIn, slideDown, shimmer), and custom scrollbar styling, 2) Configure tailwind.config.ts with extended color palette (teal-700 as primary, amber-400 as accent), custom font families, and animation utilities, 3) Update index.html with proper meta tags, font preconnect links, and description, 4) Execute end-to-end test scenarios covering: synonym mapping, complex multi-entity queries, clarification triggers, empty/gibberish input, and pagination, 5) Test responsive design at key breakpoints (320px, 768px, 1024px, 1440px) and fix any layout issues, 6) Performance optimization: verify debounce timing, check animation performance, ensure no layout shift. Each subtask should include verification against the PRD design specs.",
+        "updatedAt": "2026-02-07T19:58:06.493Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-07T19:30:17.161Z",
+      "lastModified": "2026-02-07T19:58:06.493Z",
       "taskCount": 10,
-      "completedCount": 9,
+      "completedCount": 10,
       "tags": [
         "master"
       ]
