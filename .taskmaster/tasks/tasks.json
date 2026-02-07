@@ -361,7 +361,7 @@
         "id": "5",
         "title": "Elasticsearch Query Builder Service",
         "description": "Implement the service that converts extracted entities into optimized Elasticsearch Query DSL with proper handling of nested fields, term queries, and multi-match searches.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "3",
           "4"
@@ -376,9 +376,10 @@
             "description": "Set up the ElasticsearchService class with proper client initialization, connection handling, and configuration loading from settings.",
             "dependencies": [],
             "details": "Create `backend/app/services/es_service.py` with the ElasticsearchService class. Initialize the Elasticsearch client using settings from `get_settings()` including `es_url` and `es_index`. Implement proper imports for Elasticsearch, typing modules, config, and model dependencies. **UPDATED IMPORTS**: Import ExtractedEntities from `app.models.entities`, and import TrialResult, Sponsor, Facility, AgeCategory from `app.models.schemas`. Add connection error handling and ensure the service can gracefully handle connection failures. Create a module-level singleton instance `es_service = ElasticsearchService()` for dependency injection.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test client initialization with valid and invalid ES URLs. Verify connection handling by mocking Elasticsearch client. Test that settings are properly loaded and applied to the client configuration. Verify all required imports are available.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:53:51.232Z"
           },
           {
             "id": 2,
@@ -388,9 +389,10 @@
               1
             ],
             "details": "Implement `build_query(self, entities: ExtractedEntities) -> Dict[str, Any]` method that initializes empty lists for must_clauses, filter_clauses, and should_clauses. Build the final bool query structure by conditionally adding these arrays to the query dict only when they contain clauses. Handle the edge case where no entities are provided by returning a `match_all` query. Ensure proper typing with Dict[str, Any] return type. The method should gracefully handle None/missing values for all entity fields.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test with empty ExtractedEntities returns match_all query. Test that bool query structure is correctly formed with various clause combinations. Verify None values don't cause errors.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:53:51.257Z"
           },
           {
             "id": 3,
@@ -400,9 +402,10 @@
               2
             ],
             "details": "Within build_query, add clause builders: 1) Phase - term filter on 'phase' field added to filter_clauses, 2) Status - term filter on 'overall_status' field, 3) Condition - multi_match query on brief_title^3, official_title^2, brief_summaries_description with type='best_fields' and fuzziness='AUTO' added to must_clauses, 4) Keyword - multi_match with phrase_prefix type on title and description fields, 5) Enrollment range - range query with optional gte/lte bounds based on enrollment_min/enrollment_max. Each builder should check for None before adding clauses.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test each clause builder independently: phase='PHASE2' produces correct term filter, condition='asthma' produces multi_match with boosted fields, enrollment range with min-only, max-only, and both bounds. Verify query structure matches expected Elasticsearch DSL format.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:53:51.260Z"
           },
           {
             "id": 4,
@@ -412,9 +415,10 @@
               2
             ],
             "details": "Implement nested queries: 1) Location - build nested query on 'facilities' path with bool/must containing term filters for country, state, city (only include filters for non-None values), 2) Sponsor - nested query on 'sponsors' path with match query on 'sponsors.name', 3) Age group - nested query on 'age' path with term filter on 'age.age_category'. Each nested query must specify the correct path and handle partial data (e.g., location with only country specified). Add location_filters list construction that only includes non-None location components.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test location nested query with all combinations: country-only, state+country, city+state+country. Test sponsor nested query produces correct path and match structure. Test age_group nested query. Verify nested query structure matches ES nested query requirements.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:53:51.263Z"
           },
           {
             "id": 5,
@@ -427,9 +431,10 @@
               4
             ],
             "details": "Implement `async def search(self, entities: ExtractedEntities, page: int = 1, page_size: int = 10) -> tuple[List[TrialResult], int]`. Calculate 'from' offset as (page-1)*page_size. Execute search with: query from build_query, from/size for pagination, sort by _score desc then enrollment desc, _source limited to required fields. **UPDATED _source list**: nct_id, brief_title, official_title, phase, overall_status, enrollment, sponsors, facilities, conditions, brief_summaries_description, start_date, completion_date, age, gender, study_type, source. Map response hits to TrialResult objects with **UPDATED mapping**: sponsors to Sponsor models, facilities limited to first 3 as Facility models (supports zip/status), conditions as List[Dict[str, str]], **age mapped to List[AgeCategory] using `[AgeCategory(**a) for a in source.get(\"age\", [])]`**, completion_date, gender, study_type, source as Optional[str]. Return tuple of results list and total count from response['hits']['total']['value'].",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test pagination calculates correct from/size values. Mock ES response and verify result mapping to TrialResult is correct including all new fields. Test age field is mapped to AgeCategory objects (not raw dicts). Test conditions field is properly mapped as List[Dict[str, str]]. Test facilities are limited to 3 and include zip/status when present. Test empty response returns empty list with 0 total. Verify sorting parameters are correctly applied.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:53:51.267Z"
           },
           {
             "id": 6,
@@ -443,14 +448,16 @@
               5
             ],
             "details": "Create `backend/tests/test_es_service.py` with unit tests covering: 1) Empty entities -> match_all, 2) Single field extraction (phase only, condition only, location only), 3) Multiple combined fields, 4) All nested query types (location with partial data, sponsor, age_group), 5) Range queries with min-only, max-only, both bounds, 6) Verify multi_match field boosting and fuzziness settings, 7) Test search method pagination offset calculation, 8) Test result mapping with mock ES responses including **new fields**: conditions (List[Dict[str, str]]), completion_date, gender, study_type, source, 9) **NEW**: Verify age field maps to List[AgeCategory] objects not raw dicts, 10) **NEW**: Verify Facility mapping supports zip and status fields, 11) **NEW**: Test with ES responses containing partial data (some fields missing). Use pytest fixtures for ExtractedEntities with various configurations. Mock Elasticsearch client for search tests.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run pytest on test_es_service.py. Verify 100% coverage of build_query paths. Test each query type produces valid Elasticsearch DSL that can be validated against ES query structure. Verify all TrialResult fields are correctly typed (especially age as List[AgeCategory]). Integration test against local ES instance if available.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:53:51.270Z"
           }
         ],
         "complexity": 6,
         "recommendedSubtasks": 6,
-        "expansionPrompt": "Break down ES query builder into: 1) Create es_service.py with Elasticsearch client initialization and connection handling, 2) Implement build_query method with bool query construction (must/filter/should clauses), 3) Add query clause builders for each entity type: term filters for phase/status, multi_match for condition/keyword, range for enrollment, 4) Implement nested queries for location (facilities), sponsor, and age_group with proper path handling, 5) Create search method with pagination, sorting, and _source field selection, 6) Add unit tests for query DSL output with various entity combinations. Each subtask should handle null/missing entity values gracefully."
+        "expansionPrompt": "Break down ES query builder into: 1) Create es_service.py with Elasticsearch client initialization and connection handling, 2) Implement build_query method with bool query construction (must/filter/should clauses), 3) Add query clause builders for each entity type: term filters for phase/status, multi_match for condition/keyword, range for enrollment, 4) Implement nested queries for location (facilities), sponsor, and age_group with proper path handling, 5) Create search method with pagination, sorting, and _source field selection, 6) Add unit tests for query DSL output with various entity combinations. Each subtask should handle null/missing entity values gracefully.",
+        "updatedAt": "2026-02-07T18:53:51.270Z"
       },
       {
         "id": "6",
@@ -871,9 +878,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-07T18:42:51.964Z",
+      "lastModified": "2026-02-07T18:53:51.270Z",
       "taskCount": 10,
-      "completedCount": 4,
+      "completedCount": 5,
       "tags": [
         "master"
       ]
