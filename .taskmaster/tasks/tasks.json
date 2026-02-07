@@ -921,7 +921,61 @@
           9
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Backend Summary Generation Service",
+            "description": "Create a new summary_service.py file in backend/app/services/ that uses the Anthropic Claude API to generate AI-powered summaries of search results with citation markers.",
+            "dependencies": [],
+            "details": "Create `backend/app/services/summary_service.py` with an async `generate_summary(results: List[TrialResult], query: str) -> Optional[str]` function. The service should: 1) Use the existing config pattern from `config.py` to access `anthropic_api_key` and `claude_model` settings, 2) Build context from the first 10 trial results including NCT ID, phase, status, conditions, sponsor, and enrollment, 3) Define a `SUMMARY_SYSTEM_PROMPT` instructing Claude to write 3-5 sentences with numbered [1], [2] citation markers, 4) Call the Anthropic async API with max_tokens=500, 5) Return None gracefully if no API key is configured or if the API call fails, 6) Include proper logging for errors. Follow the existing llm_service.py patterns for error handling and API usage.",
+            "status": "pending",
+            "testStrategy": "Create `backend/tests/test_summary_service.py` with unit tests: 1) Test generate_summary returns None for empty results list, 2) Test generate_summary returns None when no API key is configured (mock get_settings), 3) Test successful summary generation with mocked Anthropic client returning a valid response with citations, 4) Test graceful handling of Anthropic API errors (APIError exception), 5) Test graceful handling of unexpected exceptions. Use the same mocking patterns established in test_llm_service.py."
+          },
+          {
+            "id": 2,
+            "title": "Update Backend Search Schema and Endpoint",
+            "description": "Modify the SearchResponse Pydantic model to include an optional summary field and update the search endpoint to call the summary service for page 1 results.",
+            "dependencies": [
+              1
+            ],
+            "details": "In `backend/app/models/schemas.py`, add `summary: Optional[str] = None` field to SearchResponse model after the clarification field. In `backend/app/routers/search.py`: 1) Import `generate_summary` from `..services.summary_service`, 2) After the existing search logic, conditionally call `summary = await generate_summary(results, query)` only when `page == 1 and results`, 3) Pass the summary to the SearchResponse constructor. The summary generation should not block or fail the search - if it fails, summary should simply be None.",
+            "status": "pending",
+            "testStrategy": "Add tests to `backend/tests/test_endpoints.py`: 1) Test that /search/{query} returns summary field in response JSON, 2) Test that summary is only present on page 1 (mock summary service to return a value), 3) Test that summary is None for page > 1, 4) Test that search still works when summary generation fails (mock summary service to raise exception). Integration test: verify summary field appears in actual API response structure."
+          },
+          {
+            "id": 3,
+            "title": "Update Frontend Types and Create AISummary Component",
+            "description": "Add the summary field to TypeScript types and create a new AISummary component that renders the summary with clickable citation buttons.",
+            "dependencies": [],
+            "details": "In `frontend/src/types/index.ts`, add `summary?: string;` to the SearchResponse interface. Create `frontend/src/components/AISummary.tsx` with: 1) Props interface `{ summary: string; onCitationClick: (index: number) => void }`, 2) A `renderSummaryWithCitations` callback using `summary.split(/(\\[\\d+\\])/g)` regex to parse citation markers, 3) Render citation markers as clickable buttons with styling: inline-flex, small size, primary color with opacity background, hover effect, 4) The button onClick should call `onCitationClick(index - 1)` to convert to 0-indexed, 5) Wrapper div with gradient background, rounded corners, border, and icon indicating AI-generated content. Use existing CSS variable patterns (--color-primary, --color-text, etc.).",
+            "status": "pending",
+            "testStrategy": "Manual testing: 1) Verify component renders summary text correctly, 2) Verify [1], [2], [3] markers are converted to clickable buttons, 3) Verify clicking a citation button calls onCitationClick with correct 0-indexed value, 4) Verify styling matches design system (gradient background, proper spacing, icon). Optional: Add unit tests with React Testing Library to verify citation parsing and click handlers."
+          },
+          {
+            "id": 4,
+            "title": "Update ResultCard and ResultsList for Highlight and Scroll Support",
+            "description": "Modify ResultCard to support highlight state with forwardRef, and update ResultsList to expose a scrollToResult method using useImperativeHandle.",
+            "dependencies": [
+              3
+            ],
+            "details": "In `frontend/src/components/ResultCard.tsx`: 1) Convert to forwardRef component, 2) Add `isHighlighted?: boolean` to props, 3) Add local `showHighlight` state with useEffect that sets true when isHighlighted changes to true, then resets after 2000ms (cleanup timer on unmount), 4) Add ring-2 ring-[var(--color-accent)] ring-offset-2 classes conditionally when showHighlight is true. In `frontend/src/components/ResultsList.tsx`: 1) Convert to forwardRef, 2) Export `ResultsListHandle` interface with `scrollToResult: (index: number) => void`, 3) Add `cardRefs = useRef<(HTMLDivElement | null)[]>([])` to store refs for each card, 4) Add `highlightedIndex` state, 5) Implement scrollToResult callback using `scrollIntoView({ behavior: 'smooth', block: 'center' })` and setting highlightedIndex, 6) Use useImperativeHandle to expose scrollToResult, 7) Pass ref and isHighlighted prop to each ResultCard.",
+            "status": "pending",
+            "testStrategy": "Manual testing: 1) Verify ResultCard accepts ref and forwards to DOM element, 2) Verify highlight ring appears when isHighlighted is true, 3) Verify highlight ring disappears after 2 seconds, 4) Verify ResultsList.scrollToResult scrolls the specified card into view smoothly, 5) Verify scrolled card receives highlight animation. Test edge cases: calling scrollToResult for invalid index should not crash."
+          },
+          {
+            "id": 5,
+            "title": "Wire AISummary Component in App.tsx",
+            "description": "Integrate the AISummary component into App.tsx, connecting citation clicks to the ResultsList scroll functionality.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "In `frontend/src/App.tsx`: 1) Import AISummary and ResultsListHandle type, 2) Add `resultsListRef = useRef<ResultsListHandle>(null)`, 3) Create `handleCitationClick = useCallback((index: number) => { resultsListRef.current?.scrollToResult(index); }, [])`, 4) In the results rendering section (appState === 'results'), add the AISummary component before ResultsList: render `<AISummary summary={response.summary} onCitationClick={handleCitationClick} />` only when `response.summary && response.page === 1`, 5) Pass `ref={resultsListRef}` to the ResultsList component. Ensure the summary only displays on page 1 and smoothly transitions when navigating pages.",
+            "status": "pending",
+            "testStrategy": "End-to-end testing: 1) Perform a search and verify AI summary appears above results on page 1, 2) Click citation buttons [1], [2], etc. and verify page scrolls to corresponding result card, 3) Verify highlighted card has visible ring animation for 2 seconds, 4) Navigate to page 2 and verify summary disappears, 5) Navigate back to page 1 and verify summary reappears with new search, 6) Test with search that returns no results - verify no summary displayed, 7) Test with API key not configured - verify search works without summary."
+          }
+        ]
       }
     ],
     "metadata": {
