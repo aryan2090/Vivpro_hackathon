@@ -21,5 +21,18 @@ node_modules/
 *.sln
 *.sw?
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# Build outputs
+dist/
+
+# Elasticsearch data
+esdata/
+
 # OS specific
 .DS_Store
