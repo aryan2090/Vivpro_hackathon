@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"generatedAt": "2026-02-07T16:32:37.414Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Project Foundation and Infrastructure Setup",
+			"complexityScore": 6,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Break down the project foundation setup into: 1) Docker Compose configuration for Elasticsearch 9.3.0 with proper settings, 2) Backend Python project structure creation with all directories, 3) requirements.txt with all dependencies and versions, 4) Pydantic Settings configuration in config.py, 5) Frontend Vite+React+TypeScript project initialization, 6) Tailwind CSS 4.0 configuration with custom theme (colors, fonts via CSS variables), 7) Environment file setup with required API keys. Each subtask should include verification steps.",
+			"reasoning": "This is a greenfield project requiring setup of three interconnected systems (Docker/ES, FastAPI backend, React frontend). The task involves multiple technologies (Docker, Python, Node.js, Tailwind CSS 4.0) and requires proper directory structure creation. Complexity is moderate-high because: no existing code to build upon, must configure Tailwind CSS 4.0 (newer syntax), need custom theme with specific fonts (Fraunces, Outfit) and colors, and all three systems must work together. The PRD provides detailed guidance which reduces ambiguity."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Pydantic Data Models and Type Definitions",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down data models creation into: 1) Create entities.py with ExtractedEntities model including all enums (PhaseEnum, StatusEnum), LocationFilter, and proper Field definitions with descriptions, 2) Create schemas.py with Sponsor, Facility, TrialResult, SearchResponse, SuggestionResponse, and ErrorResponse models, 3) Create frontend TypeScript interfaces in types/index.ts matching all Pydantic models exactly, 4) Add unit tests for model validation with sample data from clinical_trials.json. Each subtask should include type hints and validation rules.",
+			"reasoning": "This is a straightforward data modeling task with clear requirements from the PRD. The complexity is moderate because: the data structures are well-defined in the PRD, Pydantic models are standard patterns, TypeScript interfaces mirror the Python models. However, there are nested types (LocationFilter, Sponsor, Facility), enums with specific values, and optional fields that require careful handling. The clinical_trials.json structure is known and documented."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Elasticsearch Index Mapping and Bulk Ingestion",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down ES setup into: 1) Create create_index.py with complete field mapping including keyword fields (phase, overall_status, nct_id), text fields with clinical_analyzer, and search_as_you_type sub-fields for titles, 2) Define nested mappings for sponsors, facilities, design_outcomes, and age arrays with proper field types, 3) Implement ingest.py with document transformation (enrollment string-to-int, null handling, date parsing), 4) Add bulk indexing using elasticsearch-py helpers with error handling and progress reporting, 5) Create verification script with sample queries for each field type (term, nested, range). Each subtask should handle edge cases in the data.",
+			"reasoning": "This task requires understanding of Elasticsearch 9.x mapping syntax and the clinical_trials.json data structure. Complexity is moderate because: the data has nested fields (sponsors, facilities, design_outcomes) requiring nested mapping type, enrollment is stored as string but needs integer conversion, dates need proper handling, and search_as_you_type requires specific field configuration. The bulk ingestion needs to handle 1000 documents efficiently with proper error reporting. The PRD provides mapping examples which helps."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Claude API LLM Service for Entity Extraction",
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down LLM service into: 1) Create llm_service.py with Claude API client setup using anthropic SDK and proper async patterns, 2) Design comprehensive system prompt with field definitions, valid enum values, and expected JSON output schema, 3) Implement domain synonym mappings within the prompt (open->RECRUITING, phase variations, country normalizations), 4) Add clarification detection logic for ambiguous/misspelled/broad queries with confidence scoring, 5) Implement JSON response parsing with error handling for malformed LLM output, 6) Create unit tests with diverse query types (simple, complex, ambiguous, gibberish). Each subtask should handle edge cases and fallback scenarios.",
+			"reasoning": "This is the most technically challenging backend task. The LLM integration requires: careful prompt engineering for reliable JSON extraction, handling multiple entity types with domain-specific mappings, confidence scoring for ambiguous queries, clarification generation, and robust error handling for unpredictable LLM outputs. The prompt must encode clinical trial domain knowledge (phase synonyms, status mappings, location normalization). JSON parsing must handle cases where the LLM returns invalid JSON. This is high complexity due to the unpredictable nature of LLM outputs and the need for domain expertise."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Elasticsearch Query Builder Service",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down ES query builder into: 1) Create es_service.py with Elasticsearch client initialization and connection handling, 2) Implement build_query method with bool query construction (must/filter/should clauses), 3) Add query clause builders for each entity type: term filters for phase/status, multi_match for condition/keyword, range for enrollment, 4) Implement nested queries for location (facilities), sponsor, and age_group with proper path handling, 5) Create search method with pagination, sorting, and _source field selection, 6) Add unit tests for query DSL output with various entity combinations. Each subtask should handle null/missing entity values gracefully.",
+			"reasoning": "This task requires deep understanding of Elasticsearch Query DSL, especially nested queries. Complexity is moderate-high because: multiple query types must be combined correctly (term, match, multi_match, nested, range), nested queries for facilities/sponsors/age require proper path specification, the bool query structure must handle any combination of entities, and pagination with sorting needs proper implementation. The mapping from ExtractedEntities to Query DSL requires careful consideration of each field type. Edge cases include empty entities (match_all) and partial entity sets."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Auto-Suggestion Service Implementation",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down suggestion service into: 1) Create suggestion.py with ES client and index configuration, 2) Implement get_suggestions method using search_as_you_type with bool_prefix multi_match on title suggest fields, 3) Add fallback logic with phrase_prefix query and title extraction for when primary approach returns no results, 4) Create get_condition_suggestions helper with common condition names for fast matching. Each subtask should include deduplication and performance optimization (limit, minimum prefix length).",
+			"reasoning": "This is a relatively straightforward Elasticsearch feature. Complexity is moderate because: search_as_you_type requires specific query syntax (bool_prefix, _2gram, _3gram fields), the suggestion logic needs deduplication and sensible limits, and there's a fallback mechanism needed. However, the PRD provides clear implementation guidance, and the feature is isolated without complex dependencies. Performance optimization (response under 100ms) is important but achievable with proper query structure."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "FastAPI Search and Suggestion Endpoints",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down FastAPI endpoints into: 1) Create main.py with FastAPI app initialization, CORS middleware configuration for Vite dev server origins, and global exception handler, 2) Create search.py router with /api/search/{query} endpoint accepting pagination params (page, page_size with validation), 3) Implement search endpoint logic: call extract_entities -> build_query -> search -> return SearchResponse, 4) Add /api/suggest endpoint with query param validation (min_length=2) calling suggestion_service, 5) Add health check endpoint and OpenAPI documentation configuration. Each subtask should include proper error handling and logging.",
+			"reasoning": "This task is standard FastAPI development with clear patterns. Complexity is moderate because: it's primarily wiring together existing services, CORS configuration is straightforward, pagination and query param validation are built-in FastAPI features. The complexity comes from: proper error handling across the pipeline, ensuring the response format matches the Pydantic schemas, and handling edge cases where LLM or ES might fail. The PRD provides code snippets which significantly reduces ambiguity."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Frontend API Client and Core Components",
+			"complexityScore": 7,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Break down frontend core components into: 1) Create api.ts with searchTrials and getSuggestions functions using fetch API with proper error handling and type safety, 2) Build SearchBar component with debounced input (300ms), cycling placeholder animation, amber focus glow, and suggestion dropdown with keyboard navigation, 3) Implement suggestion dropdown with smooth slide animation, click handling, and outside-click dismissal, 4) Create QueryInterpretation component with color-coded entity chips (indigo/teal/emerald/slate/amber), sequential entrance animation, and 'We understood:' prefix, 5) Build ResultCard component with status-colored left border, expandable details section, serif title, and metadata display, 6) Add proper TypeScript types throughout matching backend schemas, 7) Create CSS animations in index.css (fadeIn, slideDown) and configure Tailwind theme. Each subtask should be mobile-responsive.",
+			"reasoning": "This is a complex frontend task requiring multiple interactive components. Complexity is high because: SearchBar needs debouncing, suggestion state management, and cycling placeholders; QueryInterpretation requires dynamic chip rendering with animations; ResultCard needs expand/collapse logic and conditional styling; all components must work with TypeScript strictly. The design requirements are specific (serif fonts, exact colors, animations). The debounced API calls and state synchronization add complexity. Multiple components with interconnected state (suggestions, loading, results)."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Frontend Results List, Pagination, and State Management",
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down results and state management into: 1) Create Pagination component with dynamic page number generation, edge-case handling (first/last page), and proper button states, 2) Build ClarificationBanner with amber styling, question parsing to extract options, and selection handling that triggers refined search, 3) Create EmptyState component with two variants (no-results, error), suggestion query buttons, and retry functionality, 4) Implement ResultsList component composing ResultCard with staggered animations and result count display, 5) Build App.tsx with complete state machine (idle/loading/results/no-results/error), search handler with pagination support, and smooth scroll on page change, 6) Add skeleton loading states with shimmer animation and header transition (hero to compact). Each subtask should handle all state transitions gracefully.",
+			"reasoning": "This task involves complex state management and UI composition. Complexity is high because: the App component must manage multiple states with clean transitions, pagination requires scroll handling and state synchronization, ClarificationBanner needs option extraction from question text, EmptyState has two variants with different behaviors, and the hero-to-compact header transition needs smooth animation. The state machine (idle -> loading -> results/no-results/error) must handle all edge cases including retry and clarification refinement. Multiple components need to communicate through props and callbacks."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Visual Polish, Animations, and End-to-End Testing",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Break down visual polish and testing into: 1) Complete index.css with Google Fonts import (Fraunces, Outfit), CSS variables for theme colors, keyframe animations (fadeIn, slideDown, shimmer), and custom scrollbar styling, 2) Configure tailwind.config.ts with extended color palette (teal-700 as primary, amber-400 as accent), custom font families, and animation utilities, 3) Update index.html with proper meta tags, font preconnect links, and description, 4) Execute end-to-end test scenarios covering: synonym mapping, complex multi-entity queries, clarification triggers, empty/gibberish input, and pagination, 5) Test responsive design at key breakpoints (320px, 768px, 1024px, 1440px) and fix any layout issues, 6) Performance optimization: verify debounce timing, check animation performance, ensure no layout shift. Each subtask should include verification against the PRD design specs.",
+			"reasoning": "This is the integration and polish phase. Complexity is moderate-high because: it requires testing the entire system end-to-end with diverse query types, responsive design must work across multiple breakpoints, animations must be smooth without causing jank, and all the design specifications (fonts, colors, spacing) must match the PRD. The testing scenarios cover edge cases that might reveal bugs in earlier tasks. Performance optimization requires careful measurement. However, much of the code is already written - this is refinement and verification work."
+		}
+	]
+}
