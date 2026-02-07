@@ -1,0 +1,625 @@
+<rpg-method>
+# Repository Planning Graph (RPG) Method PRD
+# Intelligent Clinical Trials Search - Vivpro Hackathon 2026
+</rpg-method>
+
+---
+
+<overview>
+
+## Problem Statement
+Clinical trial data is vast, complex, and highly structured. Researchers, doctors, and patients struggle to find relevant studies using simple keywords. Traditional search interfaces fail to capture nuance in queries like "Show me ongoing Phase 3 lung cancer trials in the USA for adults." Users are forced to manually navigate complex filter sidebars or learn specific query syntaxes. We need an intuitive natural language interface over this structured dataset.
+
+## Target Users
+- **Researchers**: Looking for trials by specific conditions, phases, genes, or sponsors
+- **Clinicians**: Finding recruiting trials for their patients by condition and location
+- **Patients/Advocates**: Searching for relevant trials in plain English
+
+## Success Metrics
+- Entity extraction correctly identifies Phase, Condition, Status, Location, and Keywords from complex natural language sentences
+- Generated Elasticsearch queries accurately reflect user intent with minimal false positives
+- Top results match the specified search criteria
+- Ambiguous or no-match queries are handled gracefully with clarification or feedback
+- Interface is intuitive with clear feedback on how queries were interpreted
+
+</overview>
+
+---
+
+<functional-decomposition>
+
+## Capability Tree
+
+### Capability: Data Ingestion
+Handles loading the clinical trials dataset into Elasticsearch with proper schema mapping.
+
+#### Feature: Elasticsearch Index Mapping
+- **Description**: Define an ES index mapping (schema) that properly handles all clinical trial fields with correct types
+- **Inputs**: Field analysis from `clinical_trials.json` (1000 records)
+- **Outputs**: ES index with mapping for: `nct_id`, `brief_title`, `official_title`, `phase`, `overall_status`, `condition` (from brief_title/description), `sponsors` (nested), `enrollment` (integer), `completion_date`, `start_date`, `gender`, `minimum_age`, `maximum_age`, `age`, `study_type`, `intervention_model`, `primary_purpose`, `facilities` (nested with city/state/country), `brief_summaries_description`, `detailed_description`, `design_outcomes` (nested), `acronym`, `source`
+- **Behavior**: Use `keyword` type for filterable fields (phase, overall_status, nct_id, gender, study_type), `text` with analyzers for searchable fields (titles, descriptions), `integer` for enrollment, `date` for date fields, `nested` for sponsors/facilities/outcomes
+
+#### Feature: Bulk Indexing Script
+- **Description**: Python script to read `clinical_trials.json` and bulk-index all 1000 documents into Elasticsearch
+- **Inputs**: `clinical_trials.json` file path, Elasticsearch connection URL
+- **Outputs**: All 1000 documents indexed into ES
+- **Behavior**: Read JSON, transform fields as needed (e.g., cast enrollment from string to int), use ES bulk API for efficient indexing, report success/failure counts
+
+### Capability: Natural Language Query Processing
+The "brain" - translates natural language into structured Elasticsearch queries using Claude API.
+
+#### Feature: LLM Entity Extraction
+- **Description**: Use Claude API to extract structured entities/filters from a natural language query
+- **Inputs**: Raw user query string (e.g., "List all Phase 2 trials for Breast Cancer associated with BRCA1 gene")
+- **Outputs**: Structured JSON with extracted entities: `{ phase: "PHASE2", condition: "Breast Cancer", keyword: "BRCA1", status: null, location: null, ... }`
+- **Behavior**: Send the user query to Claude with a system prompt describing the available fields and expected output format. The LLM identifies entity types (phase, condition, status, location, sponsor, age group, gene/keyword, enrollment range) and their values. Handles domain synonyms (e.g., "open" -> "RECRUITING", "closed" -> "COMPLETED"). Returns structured JSON.
+
+#### Feature: Elasticsearch Query Builder
+- **Description**: Convert extracted entities into Elasticsearch Query DSL
+- **Inputs**: Structured entity JSON from LLM extraction
+- **Outputs**: Elasticsearch Query DSL (bool query with must/filter/should clauses)
+- **Behavior**: Map each entity type to the correct ES query clause:
+  - Phase -> `term` filter on `phase.keyword`
+  - Status -> `term` filter on `overall_status.keyword`
+  - Condition -> `match` query on titles/descriptions
+  - Location -> `nested` query on `facilities`
+  - Keywords/Genes -> `multi_match` across title, description, outcomes
+  - Enrollment ranges -> `range` query on enrollment
+  - Age group -> filter on `age` array
+  - Sponsor -> `nested` query on `sponsors`
+
+#### Feature: Clarification Detection
+- **Description**: Detect when a query is ambiguous, misspelled, or too broad and generate clarifying questions
+- **Inputs**: User query, extracted entities, ES result count
+- **Outputs**: Clarification question or null (proceed with search)
+- **Behavior**: The LLM prompt also outputs a `confidence` score and optional `clarification` field. If the query is ambiguous (e.g., could mean multiple conditions), misspelled (fuzzy match suggestions), or too broad (no specific filters extracted), return a clarification question. Examples: "Did you mean 'Lung Cancer'?", "I found trials for both Adults and Children; which group are you interested in?"
+
+#### Feature: Domain Synonym Mapping
+- **Description**: Map common lay terms to clinical trial vocabulary
+- **Inputs**: User query text
+- **Outputs**: Normalized query with domain-appropriate terms
+- **Behavior**: Handle mappings like: "open" -> "RECRUITING", "closed" -> "COMPLETED", "finished" -> "COMPLETED", "running" -> "ACTIVE_NOT_RECRUITING" or "RECRUITING", "upcoming" -> "NOT_YET_RECRUITING". This is handled within the LLM system prompt so the LLM naturally understands domain terminology.
+
+### Capability: API Layer
+FastAPI backend serving as the bridge between frontend and Elasticsearch.
+
+#### Feature: Search Endpoint
+- **Description**: Main search API endpoint that accepts natural language queries and returns results
+- **Inputs**: Natural language query string, pagination params (page, page_size)
+- **Outputs**: JSON response with: `{ query_interpretation: {...}, results: [...], total: N, page: N, clarification: "..." | null }`
+- **Behavior**: Receive query -> call LLM for entity extraction -> build ES query -> execute search -> return paginated results with interpretation metadata. Route: `GET /search/{query}` with optional query params for pagination.
+
+#### Feature: Auto-Suggestion Endpoint
+- **Description**: Endpoint that provides word/spelling suggestions as user types
+- **Inputs**: Partial query text (prefix)
+- **Outputs**: List of suggested completions
+- **Behavior**: Use Elasticsearch's `completion` suggester or `search_as_you_type` field mapping on key fields (conditions, phases, sponsor names) to provide type-ahead suggestions. Route: `GET /suggest?q={partial_text}`
+
+#### Feature: CORS and Error Handling
+- **Description**: Proper CORS configuration for React frontend and structured error responses
+- **Inputs**: API requests from frontend
+- **Outputs**: Proper CORS headers, structured error JSON
+- **Behavior**: Allow localhost origins during development. Return consistent error response format `{ error: string, detail: string }` for all failure cases.
+
+### Capability: Frontend Interface
+React-based search UI with interpretation display and result cards. Built using the `frontend-design` skill for distinctive, production-grade visual quality.
+
+**Design Direction: "Clinical Precision meets Editorial"**
+Authoritative but not sterile - think medical journal redesigned by a contemporary editorial studio. The query interpretation acts as a "diagnostic readout" where entities appear like structured lab results being extracted in real-time.
+
+**Typography**:
+- Display/headings: A distinctive serif like "Fraunces" or "Playfair Display" - authoritative, editorial weight
+- Body/UI: A precise sans-serif like "Outfit" or "IBM Plex Sans" - clinical precision, excellent readability
+- Monospace accents for NCT IDs and technical values
+
+**Color Palette**:
+- Primary: Deep teal/dark cyan (not generic medical blue) - e.g., `#0A3D3D` or `#0D4F4F`
+- Accent: Warm amber/gold for highlights and CTAs - e.g., `#D4A843`
+- Background: Very light warm gray - e.g., `#F8F6F3`
+- Status badges: Semantic colors (green=recruiting, amber=not yet recruiting, gray=completed, red=terminated)
+- Entity chips: Each entity type gets a distinct muted color (phase=indigo, condition=teal, status=emerald, location=slate, keyword=amber)
+
+**Layout and Composition**:
+- Large hero search section with generous negative space on landing
+- After search: compact top bar with search, interpretation strip below, results grid below that
+- Result cards with subtle depth (soft shadows, not flat), slight border-left color accent by status
+- Asymmetric grid-breaking elements: the interpretation "diagnostic strip" spans full width
+
+**Motion and Micro-interactions**:
+- Staggered card reveal animations on search results (CSS animation-delay)
+- Entity chips animate in sequentially as query is parsed
+- Search bar has a subtle pulse/glow when focused
+- Suggestion dropdown slides in smoothly
+- Loading state: skeleton cards with subtle shimmer
+
+**Styling**: Tailwind CSS (utility-first, no component library dependency)
+
+#### Feature: Search Bar
+- **Description**: Main search input with natural language support and auto-suggestions
+- **Inputs**: User keystrokes
+- **Outputs**: Search query submission, suggestion dropdown
+- **Behavior**: Large, prominent search bar with editorial serif placeholder text showing example queries (cycling through examples). Debounced auto-suggestion dropdown as user types with smooth slide animation. Submit on Enter or button click. Subtle amber glow on focus. Suggestion items show the field type (condition, phase, sponsor) as a small label.
+
+#### Feature: Query Interpretation Display ("Diagnostic Readout")
+- **Description**: Shows the user how their natural language query was parsed into structured filters
+- **Inputs**: `query_interpretation` object from API response
+- **Outputs**: Visual display of extracted entities as a horizontal "diagnostic strip"
+- **Behavior**: Render each extracted entity as a labeled chip with category prefix (e.g., "Phase: Phase 2", "Condition: Breast Cancer"). Color-coded by entity type. Chips animate in sequentially. Strip sits between search and results with a subtle top/bottom border. Shows "We understood:" label.
+
+#### Feature: Results List
+- **Description**: Display search results as cards with key clinical trial metadata
+- **Inputs**: Array of trial results from API
+- **Outputs**: Card list showing: Title, Status (with color badge), Conditions, Phase, Sponsor, Enrollment count
+- **Behavior**: Cards with left-border accent colored by status. Title in serif font for editorial feel. Status as a small colored badge. Metadata items (phase, sponsor, enrollment) as subtle icon+text pairs. Cards are clickable to expand for more details (description, facilities, outcomes). Staggered entrance animation. Pagination controls at bottom with current page indicator.
+
+#### Feature: Clarification Banner
+- **Description**: When the system detects ambiguity, display a clarification prompt to the user
+- **Inputs**: Clarification question from API response
+- **Outputs**: User's clarification choice, refined search
+- **Behavior**: Appears as a warm-toned banner below the search bar (amber/gold background tint). Shows the clarification question with clickable option chips. User selection triggers a refined search. Slides in with smooth animation.
+
+#### Feature: Empty/Error States
+- **Description**: Handle no-results and error scenarios gracefully
+- **Inputs**: Empty results or API errors
+- **Outputs**: Helpful messaging with suggestions
+- **Behavior**: No results: centered illustration/icon area with "No trials found matching your criteria" message and clickable example query suggestions below. Error state: muted red-toned message with retry option. Both use generous whitespace and the serif display font for the main message.
+
+</functional-decomposition>
+
+---
+
+<structural-decomposition>
+
+## Repository Structure
+
+```
+project-root/
+├── backend/
+│   ├── app/
+│   │   ├── main.py              # FastAPI app entry point, CORS, routes
+│   │   ├── config.py            # Settings (ES URL, Claude API key, etc.)
+│   │   ├── routers/
+│   │   │   └── search.py        # /search and /suggest endpoints
+│   │   ├── services/
+│   │   │   ├── llm_service.py   # Claude API integration for entity extraction
+│   │   │   ├── es_service.py    # Elasticsearch query builder & execution
+│   │   │   └── suggestion.py    # Auto-suggestion logic
+│   │   ├── models/
+│   │   │   ├── schemas.py       # Pydantic models for request/response
+│   │   │   └── entities.py      # Entity extraction data models
+│   │   └── utils/
+│   │       └── synonyms.py      # Domain synonym mappings (optional constants)
+│   ├── scripts/
+│   │   ├── ingest.py            # Bulk indexing script
+│   │   └── create_index.py      # ES index mapping creation
+│   ├── requirements.txt
+│   └── Dockerfile               # (optional, for future containerization)
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   ├── index.css            # Tailwind directives + custom CSS vars + font imports
+│   │   ├── components/
+│   │   │   ├── SearchBar.tsx
+│   │   │   ├── QueryInterpretation.tsx
+│   │   │   ├── ResultCard.tsx
+│   │   │   ├── ResultsList.tsx
+│   │   │   ├── ClarificationBanner.tsx
+│   │   │   ├── Pagination.tsx
+│   │   │   └── EmptyState.tsx
+│   │   ├── services/
+│   │   │   └── api.ts           # API client for backend
+│   │   └── types/
+│   │       └── index.ts         # TypeScript interfaces
+│   ├── index.html               # Google Fonts link for Fraunces + Outfit
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── tailwind.config.ts       # Custom theme (colors, fonts, animations)
+│   ├── postcss.config.js
+│   └── vite.config.ts
+├── docker-compose.yml           # Elasticsearch service
+├── clinical_trials.json         # Source dataset
+└── .env                         # API keys (ANTHROPIC_API_KEY, ES_URL)
+```
+
+## Module Definitions
+
+### Module: backend/app/config.py
+- **Maps to capability**: Foundation (shared config)
+- **Responsibility**: Load environment variables and provide settings to all services
+- **Exports**:
+  - `Settings` - Pydantic BaseSettings class with ES_URL, ANTHROPIC_API_KEY, etc.
+  - `get_settings()` - Dependency injection function
+
+### Module: backend/app/models/
+- **Maps to capability**: Foundation (data models)
+- **Responsibility**: Define all Pydantic models for API and internal data
+- **Exports**:
+  - `entities.py`: `ExtractedEntities` - structured output from LLM extraction
+  - `schemas.py`: `SearchResponse`, `SuggestionResponse`, `ErrorResponse` - API response models
+
+### Module: backend/scripts/
+- **Maps to capability**: Data Ingestion
+- **Responsibility**: One-time scripts for ES setup and data loading
+- **Exports**:
+  - `create_index.py`: Creates ES index with mapping (run once)
+  - `ingest.py`: Bulk loads clinical_trials.json into ES (run once)
+
+### Module: backend/app/services/llm_service.py
+- **Maps to capability**: Natural Language Query Processing
+- **Responsibility**: Claude API integration for entity extraction, synonym handling, clarification
+- **Exports**:
+  - `extract_entities(query: str) -> ExtractedEntities` - main extraction function
+
+### Module: backend/app/services/es_service.py
+- **Maps to capability**: Natural Language Query Processing + API Layer
+- **Responsibility**: Build and execute Elasticsearch queries from extracted entities
+- **Exports**:
+  - `build_query(entities: ExtractedEntities) -> dict` - builds ES Query DSL
+  - `search(query_dsl: dict, page: int, page_size: int) -> SearchResult` - executes search
+
+### Module: backend/app/services/suggestion.py
+- **Maps to capability**: API Layer (Auto-Suggestion)
+- **Responsibility**: Provide type-ahead suggestions using ES suggest API
+- **Exports**:
+  - `get_suggestions(prefix: str) -> list[str]` - returns matching suggestions
+
+### Module: backend/app/routers/search.py
+- **Maps to capability**: API Layer
+- **Responsibility**: Define FastAPI route handlers
+- **Exports**:
+  - `router` - FastAPI APIRouter with /search and /suggest routes
+
+### Module: frontend/src/services/api.ts
+- **Maps to capability**: Frontend Interface (API client)
+- **Responsibility**: HTTP client for backend API calls
+- **Exports**:
+  - `searchTrials(query, page, pageSize)` - calls /search endpoint
+  - `getSuggestions(prefix)` - calls /suggest endpoint
+
+### Module: frontend/src/components/
+- **Maps to capability**: Frontend Interface
+- **Responsibility**: React UI components
+- **Exports**: SearchBar, QueryInterpretation, ResultCard, ResultsList, ClarificationBanner, Pagination, EmptyState
+
+</structural-decomposition>
+
+---
+
+<dependency-graph>
+
+## Dependency Chain
+
+### Foundation Layer (Phase 0)
+No dependencies - built first.
+
+- **docker-compose.yml**: Elasticsearch 9.3.0 service definition with port 9200, security disabled, single-node mode
+- **backend/app/config.py**: Environment variable loading (ES_URL, ANTHROPIC_API_KEY) using Pydantic Settings
+- **backend/app/models/schemas.py**: Pydantic models for API request/response types
+- **backend/app/models/entities.py**: Data models for extracted entities (phase, condition, status, location, keyword, etc.)
+
+### Data Layer (Phase 1)
+- **backend/scripts/create_index.py**: ES index mapping creation. Depends on [docker-compose.yml, config.py]
+- **backend/scripts/ingest.py**: Bulk indexing of clinical_trials.json. Depends on [create_index.py]
+
+### NLP Layer (Phase 2)
+- **backend/app/services/llm_service.py**: Claude API integration for entity extraction + synonym handling + clarification detection. Depends on [config.py, entities.py]
+- **backend/app/services/es_service.py**: Elasticsearch query DSL builder + query execution. Depends on [config.py, entities.py, create_index.py]
+- **backend/app/services/suggestion.py**: Auto-suggestion service using ES suggest API. Depends on [config.py, create_index.py]
+
+### API Layer (Phase 3)
+- **backend/app/routers/search.py**: /search and /suggest endpoints. Depends on [llm_service.py, es_service.py, suggestion.py, schemas.py]
+- **backend/app/main.py**: FastAPI app with CORS and router mounting. Depends on [search.py, config.py]
+
+### Frontend Layer (Phase 4)
+- **frontend project setup**: Vite + React + TypeScript + Tailwind CSS scaffold. Depends on [none]
+- **frontend/src/types/index.ts**: TypeScript interfaces matching API response shapes. Depends on [schemas.py - for reference]
+- **frontend/src/services/api.ts**: API client. Depends on [types, main.py - API must be defined]
+- **frontend/src/components/SearchBar.tsx**: Search input with auto-suggestions. Depends on [api.ts]
+- **frontend/src/components/QueryInterpretation.tsx**: Entity display chips. Depends on [types]
+- **frontend/src/components/ResultCard.tsx**: Individual trial card. Depends on [types]
+- **frontend/src/components/ResultsList.tsx**: Results container + pagination. Depends on [ResultCard.tsx]
+- **frontend/src/components/ClarificationBanner.tsx**: Clarification UI. Depends on [types]
+- **frontend/src/components/EmptyState.tsx**: No-results/error states. Depends on [none]
+- **frontend/src/App.tsx**: Main app composing all components. Depends on [all components, api.ts]
+
+### Integration and Polish (Phase 5)
+- **End-to-end testing**: Full flow testing (query -> extraction -> ES search -> display). Depends on [all phases]
+- **UI polish**: All frontend components built using `frontend-design` skill for distinctive, production-grade visual quality. Depends on [Phase 4]
+
+</dependency-graph>
+
+---
+
+<implementation-roadmap>
+
+## Development Phases
+
+### Phase 0: Foundation
+**Goal**: Project scaffolding and infrastructure
+
+**Entry Criteria**: Clean repository with clinical_trials.json present
+
+**Tasks**:
+- [ ] Create `docker-compose.yml` with Elasticsearch 9.3.0 service (port 9200, xpack.security.enabled=false, discovery.type=single-node)
+- [ ] Set up FastAPI backend project structure (`backend/` directory with app/, scripts/, requirements.txt)
+- [ ] Implement `config.py` with Pydantic Settings (ES_URL, ANTHROPIC_API_KEY)
+- [ ] Define Pydantic models in `entities.py` (ExtractedEntities) and `schemas.py` (SearchResponse, SuggestionResponse)
+- [ ] Set up React + Vite + TypeScript frontend project (`frontend/` directory)
+- [ ] Configure Tailwind CSS with custom theme (colors, fonts, animations) in `tailwind.config.ts`
+- [ ] Create `.env` with required API keys (ANTHROPIC_API_KEY, ES_URL=http://localhost:9200)
+
+**Exit Criteria**: Docker ES starts on port 9200, backend and frontend projects run independently
+
+**Delivers**: Infrastructure ready for feature development
+
+---
+
+### Phase 1: Data Ingestion
+**Goal**: Clinical trials data indexed and searchable in Elasticsearch
+
+**Entry Criteria**: Phase 0 complete, Elasticsearch running
+
+**Tasks**:
+- [ ] Define Elasticsearch index mapping in `create_index.py` with proper field types:
+  - `keyword` for: phase, overall_status, nct_id, gender, study_type, age (array), intervention_model, primary_purpose
+  - `text` with standard analyzer for: brief_title, official_title, brief_summaries_description, detailed_description
+  - `search_as_you_type` sub-fields on: brief_title, official_title (for auto-suggestions)
+  - `integer` for: enrollment (cast from string)
+  - `date` for: start_date, completion_date, primary_completion_date, study_first_submitted_date
+  - `nested` for: sponsors (name, agency_class, lead_or_collaborator), facilities (name, city, state, country), design_outcomes (outcome_type, measure, time_frame, description)
+- [ ] Write `ingest.py` bulk indexing script:
+  - Read clinical_trials.json
+  - Transform fields (enrollment string->int, handle nulls)
+  - Use elasticsearch-py bulk helpers for efficient indexing
+  - Report indexed/failed counts
+- [ ] Verify data with sample ES REST queries
+
+**Exit Criteria**: All 1000 documents indexed, manual queries return expected results
+
+**Delivers**: Searchable clinical trials database
+
+---
+
+### Phase 2: NLP Query Processing
+**Goal**: Natural language queries are parsed into structured Elasticsearch queries
+
+**Entry Criteria**: Phase 1 complete, data indexed in ES
+
+**Tasks**:
+- [ ] Implement `llm_service.py` with Claude API integration:
+  - System prompt defining available fields, valid values, domain synonyms, and output JSON schema
+  - Domain synonym handling within the prompt ("open"->"RECRUITING", "closed"->"COMPLETED", "finished"->"COMPLETED", "running"->"RECRUITING", "upcoming"->"NOT_YET_RECRUITING")
+  - Output schema: { phase, condition, status, location, sponsor, keyword, age_group, enrollment_min, enrollment_max, confidence, clarification }
+  - Clarification detection for ambiguous/misspelled/too-broad queries
+- [ ] Implement `es_service.py` with query DSL builder:
+  - Build bool query with must/filter/should clauses from extracted entities
+  - Phase/Status -> term filter on keyword fields
+  - Condition -> match query on title/description fields
+  - Location -> nested query on facilities (city/state/country)
+  - Keywords/Genes -> multi_match across text fields
+  - Enrollment -> range query
+  - Age group -> terms filter on age array
+  - Sponsor -> nested query on sponsors.name
+- [ ] Handle edge cases: empty queries, no extractable entities, gibberish input
+
+**Exit Criteria**: Sample queries produce correct ES query DSL and return relevant results
+
+**Delivers**: Working NLP pipeline from natural language to search results
+
+---
+
+### Phase 3: API Endpoints
+**Goal**: Working REST API serving search and suggestion endpoints
+
+**Entry Criteria**: Phase 2 complete, NLP pipeline working
+
+**Tasks**:
+- [ ] Implement `GET /search/{query}` endpoint in `search.py`:
+  - Accept pagination query params (page=1, page_size=10)
+  - Call llm_service.extract_entities()
+  - Call es_service.build_query() and es_service.search()
+  - Return SearchResponse with query_interpretation, results, total, page, clarification
+- [ ] Implement `GET /suggest` endpoint:
+  - Accept query param `q` (partial text)
+  - Call suggestion.get_suggestions()
+  - Return SuggestionResponse with list of suggestions
+- [ ] Implement `suggestion.py`:
+  - Use ES search_as_you_type or prefix query on title fields
+  - Return top 5-10 suggestions
+- [ ] Configure CORS in `main.py` (allow localhost:5173 for Vite dev server)
+- [ ] Add structured error handling middleware
+
+**Exit Criteria**: API endpoints return correct JSON, testable via curl
+
+**Delivers**: Complete backend API ready for frontend integration
+
+---
+
+### Phase 4: Frontend UI
+**Goal**: Polished, functional search interface using frontend-design skill
+
+**Entry Criteria**: Phase 3 complete, API endpoints working
+
+**Tasks**:
+- [ ] Define TypeScript interfaces in `types/index.ts` matching API response shapes
+- [ ] Implement `api.ts` with searchTrials() and getSuggestions() functions
+- [ ] Build SearchBar component:
+  - Debounced input (300ms) calling /suggest endpoint
+  - Suggestion dropdown with smooth slide animation
+  - Submit on Enter or search button click
+  - Cycling placeholder examples in serif font
+  - Amber glow on focus
+- [ ] Build QueryInterpretation ("Diagnostic Readout") component:
+  - Horizontal strip of color-coded entity chips
+  - Sequential chip entrance animation
+  - "We understood:" label prefix
+- [ ] Build ResultCard component:
+  - Left-border accent by status color
+  - Serif title, status badge, metadata pairs (phase, sponsor, enrollment)
+  - Expandable details section (description, facilities)
+- [ ] Build ResultsList component:
+  - Staggered card entrance animations
+  - Result count display
+  - Pagination component at bottom
+- [ ] Build ClarificationBanner component:
+  - Amber-toned banner with question text
+  - Clickable option chips
+  - Slide-in animation
+- [ ] Build EmptyState component:
+  - Centered message with suggested example queries
+  - Error state variant with retry
+- [ ] Compose all in App.tsx with state management (useState/useReducer)
+- [ ] Loading states with skeleton shimmer cards
+- [ ] Use `frontend-design` skill for all component implementation to ensure distinctive, production-grade visual design
+
+**Exit Criteria**: Full search flow works end-to-end in the browser
+
+**Delivers**: Complete, polished user interface
+
+---
+
+### Phase 5: Integration and Polish
+**Goal**: Production-ready, polished application
+
+**Entry Criteria**: Phase 4 complete, end-to-end flow working
+
+**Tasks**:
+- [ ] End-to-end testing with diverse query types:
+  - "Phase 3 lung cancer trials in the USA"
+  - "recruiting diabetes trials near Boston"
+  - "List all Phase 2 trials for Breast Cancer associated with BRCA1 gene"
+  - "open melanoma trials" (synonym test)
+  - "cancer" (broad query - clarification test)
+  - "" (empty query - error handling test)
+- [ ] Performance: debounce tuning, loading states, response caching
+- [ ] Edge cases: network errors, ES connection failure, LLM timeout
+- [ ] Responsive design verification
+- [ ] Final visual polish and consistency check
+
+**Exit Criteria**: Application handles all evaluation criteria gracefully
+
+**Delivers**: Hackathon-ready application
+
+</implementation-roadmap>
+
+---
+
+<architecture>
+
+## Technology Stack
+
+| Component | Technology | Rationale |
+|-----------|-----------|-----------|
+| Backend | FastAPI (Python) | Async support, auto OpenAPI docs, Pydantic validation |
+| Database | Elasticsearch 9.3.0 | Required by hackathon spec. Docker deployment |
+| NLP | Claude API (Anthropic) | Best accuracy for entity extraction, handles synonyms and ambiguity naturally |
+| Frontend | React + Vite + TypeScript + Tailwind CSS | Fast dev server, type safety for complex data, utility-first styling |
+| Containerization | Docker Compose | Easy ES setup, reproducible environment |
+| HTTP Client (FE) | fetch API | No extra dependency needed |
+| ES Client (BE) | elasticsearch-py | Official Python client for Elasticsearch |
+
+## Data Models
+
+### ExtractedEntities (from LLM)
+```json
+{
+  "phase": "PHASE2" | null,
+  "condition": "Breast Cancer" | null,
+  "status": "RECRUITING" | null,
+  "location": { "city": "", "state": "", "country": "" } | null,
+  "sponsor": "AstraZeneca" | null,
+  "keyword": "BRCA1" | null,
+  "age_group": "adult" | "child" | "older-adults" | null,
+  "enrollment_min": 500 | null,
+  "enrollment_max": null,
+  "confidence": 0.95,
+  "clarification": null | "Did you mean 'Lung Cancer'?"
+}
+```
+
+### SearchResponse (API output)
+```json
+{
+  "query_interpretation": { ... },
+  "results": [ { trial document } ],
+  "total": 42,
+  "page": 1,
+  "page_size": 10,
+  "clarification": null | "..."
+}
+```
+
+### Clinical Trial Document (ES indexed)
+Key fields: nct_id, brief_title, official_title, phase, overall_status, enrollment (int), sponsors (nested array), facilities (nested array), age (array), brief_summaries_description, design_outcomes (nested array), start_date, completion_date, gender, study_type, source
+
+</architecture>
+
+---
+
+<risks>
+
+## Technical Risks
+**Risk**: LLM latency adds delay to search experience
+- **Impact**: Medium
+- **Likelihood**: Medium
+- **Mitigation**: Show loading state immediately, consider caching common query patterns
+- **Fallback**: Simple rule-based entity extractor as fallback if LLM is slow/unavailable
+
+**Risk**: Entity extraction misinterprets query intent
+- **Impact**: High
+- **Likelihood**: Medium
+- **Mitigation**: Detailed system prompt with examples, domain synonym dictionary, clarification questions for low-confidence extractions
+- **Fallback**: Return broader results with explanation when confidence is low
+
+**Risk**: Elasticsearch query DSL generation produces incorrect queries
+- **Impact**: High
+- **Likelihood**: Low
+- **Mitigation**: Map entity types to specific query clause types (term vs match vs nested), test with diverse query patterns
+- **Fallback**: Fall back to simple multi_match query on all text fields
+
+## Dependency Risks
+**Risk**: Docker/Elasticsearch setup issues on different platforms
+- **Impact**: Medium
+- **Likelihood**: Low
+- **Mitigation**: docker-compose.yml with exact version pinning (9.3.0) and all required environment variables
+
+## Scope Risks
+**Risk**: Auto-suggestion feature complexity with Elasticsearch suggest API
+- **Impact**: Low
+- **Likelihood**: Medium
+- **Mitigation**: Start with simple prefix matching on indexed fields, upgrade to completion suggester if time permits
+- **Fallback**: Omit auto-suggestion, focus on core search quality
+
+</risks>
+
+---
+
+<appendix>
+
+## Dataset Reference
+- File: `clinical_trials.json`
+- Records: 1000 clinical trial documents
+- Key fields: nct_id, brief_title, official_title, phase (PHASE1/PHASE2/PHASE3/PHASE4), overall_status (RECRUITING/NOT_YET_RECRUITING/COMPLETED/ACTIVE_NOT_RECRUITING/TERMINATED/WITHDRAWN/SUSPENDED), enrollment (string->int), sponsors (nested), facilities (nested with city/state/country), design_outcomes (nested), age (array: adult/child/older-adults), gender, study_type, brief_summaries_description
+
+## Elasticsearch Setup
+- Image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
+- Port: 9200
+- Environment: xpack.security.enabled=false, discovery.type=single-node
+- No authentication required
+
+## API Endpoints Summary
+- `GET /search/{query}?page=1&page_size=10` - Natural language search with pagination
+- `GET /suggest?q={prefix}` - Auto-suggestions for type-ahead
+
+## Domain Synonym Reference
+| Lay Term | Clinical Term |
+|----------|--------------|
+| open | RECRUITING |
+| closed | COMPLETED |
+| finished | COMPLETED |
+| running | RECRUITING |
+| upcoming | NOT_YET_RECRUITING |
+| large trials | enrollment > 500 |
+
+</appendix>
