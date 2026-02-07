@@ -263,7 +263,7 @@
         "id": "4",
         "title": "Claude API LLM Service for Entity Extraction",
         "description": "Implement the LLM service using Claude API (anthropic SDK) to extract structured entities from natural language queries, including domain synonym handling and clarification detection.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "2"
         ],
@@ -277,9 +277,10 @@
             "description": "Create the backend/app/services/llm_service.py module with anthropic SDK client initialization, async patterns, and configuration integration using the Pydantic Settings from config.py.",
             "dependencies": [],
             "details": "Create the llm_service.py file with proper imports (anthropic, json, typing). Initialize the Anthropic client using settings.anthropic_api_key from get_settings(). Implement the async extract_entities() function signature that accepts a query string and returns ExtractedEntities. Use proper async/await patterns for non-blocking I/O. Handle client initialization failures gracefully with appropriate error logging. Ensure the client is created fresh per request or use connection pooling best practices for the anthropic SDK.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test client initialization with valid API key from environment. Verify get_settings() is called correctly. Test that missing API key raises appropriate error. Mock the anthropic client to verify proper instantiation parameters. Test async function signature is properly awaitable.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:42:51.931Z"
           },
           {
             "id": 2,
@@ -289,9 +290,10 @@
               1
             ],
             "details": "Define the SYSTEM_PROMPT as a multi-line string with: 1) Role definition as clinical trials search assistant, 2) Complete list of extractable fields with their types and valid enum values:\n   - Phase: NA, PHASE1, PHASE1/PHASE2, PHASE2, PHASE2/PHASE3, PHASE3, PHASE4, Phase NA (NOTE: EARLY_PHASE1 does NOT exist)\n   - Status: ACTIVE_NOT_RECRUITING, COMPLETED, NOT_YET_RECRUITING, RECRUITING, SUSPENDED, TERMINATED, UNKNOWN, WITHDRAWN (NOTE: UNKNOWN is included)\n   - Age categories: adult, older-adults, child, adolescent, infant, toddler\n3) LocationFilter structure with city/state/country fields, 4) Confidence scoring rules (1.0 = very clear, 0.5 = ambiguous, lower for unclear), 5) JSON output schema with all fields including optional clarification field, 6) Clear rules about only extracting clearly stated entities and returning null for unmentioned fields. Include example output format in the prompt.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify prompt is valid string with no syntax errors. Manually test prompt with Claude API playground to ensure it produces valid JSON. Verify all enum values match the ExtractedEntities model in backend/app/models/entities.py. Test prompt with combined phases like 'phase 1/2' to ensure PHASE1/PHASE2 is returned. Test that UNKNOWN status and all 6 age categories are recognized.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:42:51.944Z"
           },
           {
             "id": 3,
@@ -301,9 +303,10 @@
               2
             ],
             "details": "Extend SYSTEM_PROMPT with detailed synonym mappings section: 1) Status synonyms: open/recruiting/active/enrolling->RECRUITING, closed/finished/completed/done->COMPLETED, upcoming/not started/planned->NOT_YET_RECRUITING, running/ongoing->RECRUITING or ACTIVE_NOT_RECRUITING, paused/halted->SUSPENDED, stopped/ended early->TERMINATED, 2) Phase mappings including combined phases: phase 1/phase I/P1->PHASE1, phase 1/2/phase I/II->PHASE1/PHASE2, phase 2/phase II/P2->PHASE2, phase 2/3/phase II/III->PHASE2/PHASE3, phase 3/phase III/P3->PHASE3, phase 4/phase IV/P4->PHASE4, 3) Location normalization: USA/US/United States/America->location.country: United States, UK/Britain/England->United Kingdom, 4) Age group synonyms: pediatric/children/kids->child, elderly/seniors->older-adults, teens/teenagers->adolescent, babies->infant, 5) Enrollment interpretations: large trials/big studies->enrollment_min: 500, small studies->enrollment_max: 100. Also create backend/app/utils/synonyms.py with STATUS_SYNONYMS, PHASE_MAPPINGS, and AGE_GROUP_SYNONYMS dictionaries for reference and potential server-side validation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test each synonym category with sample queries: 'open cancer trials' should map to status=RECRUITING, 'phase I/II studies' to phase=PHASE1/PHASE2, 'trials in the US' to location.country='United States', 'pediatric trials' to age_group=child, 'paused studies' to status=SUSPENDED. Verify both common and edge case synonyms work correctly. Test that original enum values still work (RECRUITING should still work directly).",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:42:51.953Z"
           },
           {
             "id": 4,
@@ -314,9 +317,10 @@
               3
             ],
             "details": "Enhance SYSTEM_PROMPT with clarification rules: 1) Set confidence based on query clarity (1.0 = all terms recognized and unambiguous, 0.7-0.9 = mostly clear with minor uncertainty, 0.5-0.7 = some ambiguity, below 0.5 = significant issues), 2) Trigger clarification for: misspelled medical terms that can't be auto-corrected, overly broad queries like just 'trials' or 'medicine', gibberish or unrelated queries, conflicting filters (e.g., completed AND recruiting), 3) Generate helpful clarification questions: 'Did you mean [suggestion]?', 'Which condition are you interested in?', 'Could you specify a phase or status?', 4) Handle edge cases: empty queries, single-word queries, queries with only stop words. The clarification field should be null when query is clear enough (confidence >= 0.7).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with ambiguous queries: 'trials' should return low confidence with clarification asking for condition. Test misspellings: 'diabeties' should still extract diabetes with slight confidence reduction. Test gibberish: 'asdfasdf' should return confidence near 0 with clarification. Test conflicting: 'completed recruiting trials' should ask for clarification. Verify clear queries have null clarification.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:42:51.955Z"
           },
           {
             "id": 5,
@@ -329,9 +333,10 @@
               4
             ],
             "details": "Complete the extract_entities() async function: 1) Call client.messages.create() with model='claude-sonnet-4-20250514', max_tokens=1024, system=SYSTEM_PROMPT, and user message with query, 2) Extract response text from message.content[0].text, 3) Parse JSON with json.loads() wrapped in try/except, 4) Convert location dict to LocationFilter object if present, 5) Construct and return ExtractedEntities using **data unpacking, 6) Handle JSONDecodeError with fallback ExtractedEntities(confidence=0.3, clarification='I had trouble understanding your query...'), 7) Handle anthropic.APIError with appropriate fallback and logging, 8) Handle unexpected exceptions with generic fallback, 9) Add input validation for empty/whitespace-only queries returning immediate fallback. Consider using regex to extract JSON from response if LLM includes extra text.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test successful parsing with mock valid JSON response. Test JSONDecodeError handling by mocking malformed response. Test API error handling by mocking anthropic.APIError. Test empty query returns appropriate fallback. Test location dict conversion to LocationFilter. Verify all ExtractedEntities fields are properly populated. Test response with extra text around JSON is handled gracefully.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:42:51.958Z"
           },
           {
             "id": 6,
@@ -341,14 +346,16 @@
               5
             ],
             "details": "Create test file with pytest fixtures for mocking anthropic client. Test categories: 1) Simple queries: 'Phase 3 cancer trials' -> phase=PHASE3, condition=cancer; 'recruiting diabetes studies' -> status=RECRUITING, condition=diabetes, 2) Combined phase queries: 'phase 1/2 trials' -> phase=PHASE1/PHASE2; 'phase 2/3 studies' -> phase=PHASE2/PHASE3, 3) Complex queries: 'Phase 2 lung cancer trials in California sponsored by Pfizer' -> all fields extracted correctly, 4) Synonym handling: 'open melanoma trials' -> status=RECRUITING; 'P1 studies' -> phase=PHASE1; 'pediatric asthma' -> age_group=child; 'paused studies' -> status=SUSPENDED, 5) Age category tests: test all 6 values (adult, older-adults, child, adolescent, infant, toddler), 6) Ambiguous queries: 'trials' -> low confidence, has clarification; 'medicine studies' -> asks for specifics, 7) Misspellings: 'diabeties trials' -> still extracts diabetes with confidence < 1.0, 8) Gibberish: 'asdfghjkl' -> confidence near 0, has clarification, 9) Edge cases: empty string, whitespace only, very long query, SQL injection attempt, 10) Error handling: test JSONDecodeError fallback, API error fallback. Use unittest.mock.patch or pytest-mock to mock anthropic.Anthropic client.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run pytest with coverage to ensure >90% code coverage on llm_service.py. Verify all test cases pass. Test isolation by ensuring no actual API calls are made (all mocked). Verify fixtures properly reset between tests. Run tests multiple times to ensure deterministic behavior. Check test execution time is under 5 seconds (no real API calls). Specifically verify tests cover all 8 phase values, 8 status values, and 6 age categories.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T18:42:51.964Z"
           }
         ],
         "complexity": 7,
         "recommendedSubtasks": 6,
-        "expansionPrompt": "Break down LLM service into: 1) Create llm_service.py with Claude API client setup using anthropic SDK and proper async patterns, 2) Design comprehensive system prompt with field definitions, valid enum values, and expected JSON output schema, 3) Implement domain synonym mappings within the prompt (open->RECRUITING, phase variations, country normalizations), 4) Add clarification detection logic for ambiguous/misspelled/broad queries with confidence scoring, 5) Implement JSON response parsing with error handling for malformed LLM output, 6) Create unit tests with diverse query types (simple, complex, ambiguous, gibberish). Each subtask should handle edge cases and fallback scenarios."
+        "expansionPrompt": "Break down LLM service into: 1) Create llm_service.py with Claude API client setup using anthropic SDK and proper async patterns, 2) Design comprehensive system prompt with field definitions, valid enum values, and expected JSON output schema, 3) Implement domain synonym mappings within the prompt (open->RECRUITING, phase variations, country normalizations), 4) Add clarification detection logic for ambiguous/misspelled/broad queries with confidence scoring, 5) Implement JSON response parsing with error handling for malformed LLM output, 6) Create unit tests with diverse query types (simple, complex, ambiguous, gibberish). Each subtask should handle edge cases and fallback scenarios.",
+        "updatedAt": "2026-02-07T18:42:51.964Z"
       },
       {
         "id": "5",
@@ -864,9 +871,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-07T18:21:52.651Z",
+      "lastModified": "2026-02-07T18:42:51.964Z",
       "taskCount": 10,
-      "completedCount": 3,
+      "completedCount": 4,
       "tags": [
         "master"
       ]
