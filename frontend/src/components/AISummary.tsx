@@ -44,6 +44,9 @@ export default function AISummary({ summary, onCitationClick }: AISummaryProps) 
           <p className="text-sm text-[var(--color-text)] leading-relaxed">
             {renderSummaryWithCitations()}
           </p>
+          <p className="text-xs text-[var(--color-text-muted)] mt-2">
+            Based on top 10 results. AI-generated summaries may not always be accurate.
+          </p>
         </div>
       </div>
     </div>

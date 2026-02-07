@@ -1,9 +1,12 @@
 """Search-related API endpoints including auto-suggestions."""
 
+import json
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
+from ..models.entities import ExtractedEntities, LocationFilter
 from ..models.schemas import SearchResponse, SuggestionResponse, SummaryResponse
 from ..services.es_service import es_service
 from ..services.llm_service import extract_entities
@@ -49,6 +52,52 @@ async def get_summary(query: str) -> SummaryResponse:
     except Exception as exc:
         logger.error("Summary failed for query '%s': %s", query, exc, exc_info=True)
         return SummaryResponse(summary=None)
+
+
+@router.get("/filter", response_model=SearchResponse)
+async def filter_trials(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+    phase: Optional[str] = None,
+    status: Optional[str] = None,
+    condition: Optional[str] = None,
+    location: Optional[str] = None,
+    sponsor: Optional[str] = None,
+    keyword: Optional[str] = None,
+    age_group: Optional[str] = None,
+    enrollment_min: Optional[int] = None,
+    enrollment_max: Optional[int] = None,
+) -> SearchResponse:
+    """Search clinical trials using explicit filter parameters."""
+    try:
+        location_filter = None
+        if location:
+            loc_data = json.loads(location)
+            location_filter = LocationFilter(**loc_data)
+
+        entities = ExtractedEntities(
+            phase=phase,
+            status=status,
+            condition=condition,
+            location=location_filter,
+            sponsor=sponsor,
+            keyword=keyword,
+            age_group=age_group,
+            enrollment_min=enrollment_min,
+            enrollment_max=enrollment_max,
+            confidence=1.0,
+        )
+        results, total = await es_service.search(entities, page, page_size)
+        return SearchResponse(
+            query_interpretation=entities,
+            results=results,
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+    except Exception as exc:
+        logger.error("Filter search failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/suggest", response_model=SuggestionResponse)

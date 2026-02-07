@@ -1,4 +1,4 @@
-import type { SearchResponse, SuggestionResponse } from '../types';
+import type { SearchResponse, SuggestionResponse, ExtractedEntities } from '../types';
 
 const API_BASE = '/api';
 
@@ -27,6 +27,32 @@ export async function fetchSummary(query: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+export async function searchWithFilters(
+  filters: Partial<ExtractedEntities>,
+  page: number = 1,
+  pageSize: number = 10,
+): Promise<SearchResponse> {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === undefined || value === null || value === '') continue;
+    if (typeof value === 'object') {
+      params.set(key, JSON.stringify(value));
+    } else {
+      params.set(key, String(value));
+    }
+  }
+
+  const response = await fetch(`${API_BASE}/filter?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error(`Filter search failed: ${response.statusText}`);
+  }
+  return response.json();
 }
 
 export async function getSuggestions(prefix: string): Promise<string[]> {

@@ -16,7 +16,12 @@ interface Chip {
   type: string;
 }
 
-export default function QueryInterpretation({ entities }: { entities: ExtractedEntities }) {
+interface QueryInterpretationProps {
+  entities: ExtractedEntities;
+  onChipRemove?: (type: string) => void;
+}
+
+export default function QueryInterpretation({ entities, onChipRemove }: QueryInterpretationProps) {
   const chips: Chip[] = [];
 
   if (entities.phase) chips.push({ label: 'Phase', value: entities.phase, type: 'phase' });
@@ -45,10 +50,21 @@ export default function QueryInterpretation({ entities }: { entities: ExtractedE
           return (
             <span
               key={chip.type}
-              className={`px-3 py-1 rounded-full text-sm font-medium border animate-fadeIn ${colors.bg} ${colors.text} ${colors.border}`}
+              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border animate-fadeIn ${colors.bg} ${colors.text} ${colors.border}`}
               style={{ animationDelay: `${i * 100}ms` }}
             >
               <span className="font-semibold">{chip.label}:</span> {chip.value}
+              {onChipRemove && (
+                <button
+                  onClick={() => onChipRemove(chip.type)}
+                  className={`ml-1 w-4 h-4 inline-flex items-center justify-center rounded-full hover:bg-black/10 transition-colors cursor-pointer ${colors.text}`}
+                  aria-label={`Remove ${chip.label} filter`}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </span>
           );
         })}

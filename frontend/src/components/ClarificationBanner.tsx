@@ -30,7 +30,7 @@ export default function ClarificationBanner({ question, onSelection }: Clarifica
             <button
               key={i}
               onClick={() => onSelection(opt)}
-              className="px-4 py-2 rounded-full bg-white border border-amber-300 text-amber-800 hover:bg-amber-100 transition-colors text-sm"
+              className="px-4 py-2 rounded-full bg-white border border-amber-300 text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer text-sm"
             >
               {opt}
             </button>

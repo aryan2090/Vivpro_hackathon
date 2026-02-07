@@ -49,7 +49,7 @@ export default function EmptyState({ type, message, onRetry, onSuggestionClick }
       {type === 'error' && onRetry && (
         <button
           onClick={onRetry}
-          className="px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-dark)] transition-colors mb-6"
+          className="px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-dark)] transition-colors cursor-pointer mb-6"
         >
           Try Again
         </button>
@@ -63,7 +63,7 @@ export default function EmptyState({ type, message, onRetry, onSuggestionClick }
               <button
                 key={i}
                 onClick={() => onSuggestionClick(q)}
-                className="px-4 py-2 rounded-full border border-[var(--color-primary-light)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors text-sm"
+                className="px-4 py-2 rounded-full border border-[var(--color-primary-light)] text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors cursor-pointer text-sm"
               >
                 {q}
               </button>

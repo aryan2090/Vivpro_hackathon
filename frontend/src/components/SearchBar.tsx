@@ -11,9 +11,10 @@ const EXAMPLE_QUERIES = [
 interface SearchBarProps {
   onSearch: (query: string) => void;
   isLoading: boolean;
+  externalQuery?: string;
 }
 
-export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
+export default function SearchBar({ onSearch, isLoading, externalQuery }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -29,6 +30,12 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (externalQuery !== undefined && externalQuery !== query) {
+      setQuery(externalQuery);
+    }
+  }, [externalQuery]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -102,7 +109,7 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
         <button
           type="submit"
           disabled={isLoading || !query.trim()}
-          className="px-4 sm:px-6 py-3 rounded-lg bg-[var(--color-accent)] text-white font-medium hover:bg-[var(--color-accent-dark)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          className="px-4 sm:px-6 py-3 rounded-lg bg-[var(--color-accent)] text-white font-medium hover:bg-[var(--color-accent-dark)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
           {isLoading ? 'Searching...' : 'Search'}
         </button>
