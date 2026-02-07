@@ -10,7 +10,84 @@
         "priority": "high",
         "dependencies": [],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Docker Compose Configuration for Elasticsearch 9.3.0",
+            "description": "Create the docker-compose.yml file at project root with Elasticsearch 9.3.0 service configured for single-node development mode with proper memory settings and persistent volume.",
+            "dependencies": [],
+            "details": "Create `docker-compose.yml` in the project root directory with the following configuration:\n- Use Elasticsearch 9.3.0 official image from docker.elastic.co\n- Set container name to 'clinical-trials-es'\n- Configure single-node discovery mode for local development\n- Disable xpack security for development simplicity\n- Set JVM heap to 512MB min/max via ES_JAVA_OPTS\n- Map port 9200:9200 for REST API access\n- Create named volume 'esdata' for data persistence\n- Add healthcheck command to verify cluster is ready\n\nVerification steps:\n1. Run `docker-compose up -d` to start the container\n2. Wait 30 seconds for Elasticsearch to initialize\n3. Execute `curl -s http://localhost:9200` and verify JSON response with cluster name\n4. Check `curl -s http://localhost:9200/_cluster/health` returns status 'green' or 'yellow'\n5. Run `docker-compose down` to clean up",
+            "status": "pending",
+            "testStrategy": "Run `docker-compose up -d && sleep 30 && curl -s http://localhost:9200 | grep -q 'cluster_name' && echo 'SUCCESS' || echo 'FAILED'`. Verify Elasticsearch responds on port 9200 with valid cluster information. Test volume persistence by indexing a document, restarting container, and verifying document exists."
+          },
+          {
+            "id": 2,
+            "title": "Create Backend Python Project Directory Structure",
+            "description": "Set up the complete FastAPI backend directory structure with all required subdirectories and __init__.py files for proper Python package organization.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create the following directory structure under `backend/`:\n```\nbackend/\n├── app/\n│   ├── __init__.py\n│   ├── main.py           # FastAPI app entry point (placeholder)\n│   ├── config.py         # Will be populated in subtask 4\n│   ├── routers/\n│   │   ├── __init__.py\n│   │   └── search.py     # Placeholder for search routes\n│   ├── services/\n│   │   ├── __init__.py\n│   │   ├── llm_service.py    # Placeholder\n│   │   ├── es_service.py     # Placeholder\n│   │   └── suggestion.py     # Placeholder\n│   ├── models/\n│   │   ├── __init__.py\n│   │   ├── schemas.py    # Placeholder\n│   │   └── entities.py   # Placeholder\n│   └── utils/\n│       ├── __init__.py\n│       └── synonyms.py   # Placeholder\n├── scripts/\n│   ├── ingest.py         # Placeholder\n│   └── create_index.py   # Placeholder\n└── requirements.txt      # Will be populated in subtask 3\n```\n\nEach __init__.py should be empty initially. main.py should contain a minimal FastAPI app:\n```python\nfrom fastapi import FastAPI\n\napp = FastAPI(title=\"Clinical Trials Search API\")\n\n@app.get(\"/health\")\ndef health():\n    return {\"status\": \"healthy\"}\n```\n\nVerification: Run `python -c \"from app.main import app; print(app.title)\"` from backend directory.",
+            "status": "pending",
+            "testStrategy": "Verify all directories exist with `find backend -type d | sort`. Verify all __init__.py files exist with `find backend -name '__init__.py' | wc -l` (should be 5). Test Python import with `cd backend && python -c 'from app.main import app'` succeeds without errors."
+          },
+          {
+            "id": 3,
+            "title": "Create Backend requirements.txt with All Dependencies",
+            "description": "Create the requirements.txt file with all necessary Python dependencies including FastAPI, Uvicorn, Elasticsearch client, Anthropic SDK, and Pydantic with exact version pinning.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create `backend/requirements.txt` with the following pinned dependencies:\n```\nfastapi==0.115.12\nuvicorn[standard]==0.34.0\nelasticsearch==9.0.1\nanthropic==0.52.0\npydantic==2.11.4\npydantic-settings==2.8.1\npython-dotenv==1.1.0\nhttpx==0.28.1\n```\n\nDependency purposes:\n- fastapi: Web framework for API\n- uvicorn[standard]: ASGI server with uvloop and httptools\n- elasticsearch: Official ES Python client compatible with ES 9.x\n- anthropic: Claude API SDK for LLM entity extraction\n- pydantic/pydantic-settings: Data validation and settings management\n- python-dotenv: Environment variable loading\n- httpx: Async HTTP client (used by anthropic SDK)\n\nVerification steps:\n1. Create a virtual environment: `python -m venv venv`\n2. Activate it: `source venv/bin/activate` (Unix) or `venv\\Scripts\\activate` (Windows)\n3. Install dependencies: `pip install -r requirements.txt`\n4. Verify installations: `pip list | grep -E 'fastapi|elasticsearch|anthropic'`\n5. Test imports: `python -c \"import fastapi, elasticsearch, anthropic; print('All imports successful')\"`",
+            "status": "pending",
+            "testStrategy": "Create fresh virtual environment and run `pip install -r backend/requirements.txt`. Verify exit code is 0 and no version conflicts. Run `python -c 'import fastapi; import elasticsearch; import anthropic; import pydantic_settings; print(\"OK\")'` to confirm all packages are importable."
+          },
+          {
+            "id": 4,
+            "title": "Implement Pydantic Settings Configuration Module",
+            "description": "Create the config.py module with Pydantic Settings for environment-based configuration including Elasticsearch URL, index name, Anthropic API key, and logging level with caching.",
+            "dependencies": [
+              3
+            ],
+            "details": "Create `backend/app/config.py` with the following implementation:\n```python\nfrom pydantic_settings import BaseSettings\nfrom functools import lru_cache\nfrom typing import Optional\n\nclass Settings(BaseSettings):\n    # Elasticsearch configuration\n    es_url: str = \"http://localhost:9200\"\n    es_index: str = \"clinical_trials\"\n    \n    # API Keys\n    anthropic_api_key: str\n    \n    # Application settings\n    log_level: str = \"INFO\"\n    \n    # Optional: for future extensions\n    cors_origins: str = \"http://localhost:5173\"\n    \n    class Config:\n        env_file = \".env\"\n        env_file_encoding = \"utf-8\"\n        case_sensitive = False\n\n@lru_cache()\ndef get_settings() -> Settings:\n    \"\"\"Cached settings instance to avoid re-reading .env on every call.\"\"\"\n    return Settings()\n```\n\nUpdate `backend/app/main.py` to use settings:\n```python\nfrom fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\nfrom app.config import get_settings\n\nsettings = get_settings()\napp = FastAPI(title=\"Clinical Trials Search API\")\n\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=[settings.cors_origins],\n    allow_methods=[\"*\"],\n    allow_headers=[\"*\"],\n)\n\n@app.get(\"/health\")\ndef health():\n    return {\"status\": \"healthy\", \"es_url\": settings.es_url}\n```\n\nVerification: Create a test .env and verify settings load correctly.",
+            "status": "pending",
+            "testStrategy": "Create a temporary .env file with `echo 'ANTHROPIC_API_KEY=test-key-123' > backend/.env`. Run `cd backend && python -c \"from app.config import get_settings; s = get_settings(); print(s.es_url, s.anthropic_api_key)\"`. Verify output shows default es_url and the test API key. Test that missing required fields raise ValidationError."
+          },
+          {
+            "id": 5,
+            "title": "Initialize Frontend with Vite, React, and TypeScript",
+            "description": "Create the frontend project using Vite with React and TypeScript template, install all base dependencies, and verify the development server runs correctly.",
+            "dependencies": [
+              1
+            ],
+            "details": "Execute the following commands to initialize the frontend:\n\n1. Create Vite project with React TypeScript template:\n```bash\nnpm create vite@latest frontend -- --template react-ts\n```\n\n2. Navigate to frontend and install dependencies:\n```bash\ncd frontend\nnpm install\n```\n\n3. Install Tailwind CSS 4.0 and Vite plugin:\n```bash\nnpm install -D tailwindcss@4.0.5 @tailwindcss/vite\n```\n\n4. Verify project structure includes:\n- frontend/src/main.tsx (entry point)\n- frontend/src/App.tsx (root component)\n- frontend/vite.config.ts (build configuration)\n- frontend/tsconfig.json (TypeScript config)\n- frontend/package.json (dependencies)\n\n5. Clean up default Vite boilerplate:\n- Remove default App.css content\n- Simplify App.tsx to basic component\n- Remove Vite/React logos from assets if present\n\nVerification:\n1. Run `npm run dev` and verify server starts on port 5173\n2. Open http://localhost:5173 in browser\n3. Verify hot module replacement works by editing App.tsx",
+            "status": "pending",
+            "testStrategy": "Run `cd frontend && npm run dev -- --port 5173 &` to start dev server in background. Wait 5 seconds, then `curl -s http://localhost:5173 | grep -q 'vite' && echo 'SUCCESS'`. Run `npm run build` to verify TypeScript compilation succeeds with no errors. Kill the background server after tests."
+          },
+          {
+            "id": 6,
+            "title": "Configure Tailwind CSS 4.0 with Custom Theme",
+            "description": "Set up Tailwind CSS 4.0 configuration in Vite, create custom theme with project-specific colors (deep teal, warm amber), import Google Fonts (Fraunces, Outfit), and define CSS custom properties.",
+            "dependencies": [
+              5
+            ],
+            "details": "1. Update `frontend/vite.config.ts`:\n```typescript\nimport { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\nimport tailwindcss from '@tailwindcss/vite'\n\nexport default defineConfig({\n  plugins: [react(), tailwindcss()],\n  server: {\n    proxy: {\n      '/api': 'http://localhost:8000'\n    }\n  }\n})\n```\n\n2. Replace `frontend/src/index.css` with custom theme:\n```css\n@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Outfit:wght@400;500;600&display=swap');\n@import 'tailwindcss';\n\n:root {\n  /* Primary colors */\n  --color-primary: #0D4F4F;\n  --color-primary-light: #1A6B6B;\n  --color-primary-dark: #083838;\n  \n  /* Accent colors */\n  --color-accent: #D4A843;\n  --color-accent-light: #E5C06A;\n  --color-accent-dark: #B8902E;\n  \n  /* Background */\n  --color-bg: #F8F6F3;\n  --color-bg-card: #FFFFFF;\n  \n  /* Text */\n  --color-text: #1F2937;\n  --color-text-muted: #6B7280;\n  \n  /* Status badge colors */\n  --color-status-recruiting: #059669;\n  --color-status-completed: #6366F1;\n  --color-status-active: #0EA5E9;\n  --color-status-terminated: #DC2626;\n}\n\nbody {\n  font-family: 'Outfit', sans-serif;\n  background-color: var(--color-bg);\n  color: var(--color-text);\n}\n\n.font-display {\n  font-family: 'Fraunces', serif;\n}\n```\n\n3. Update `frontend/src/App.tsx` to test theme:\n```tsx\nfunction App() {\n  return (\n    <div className=\"min-h-screen bg-[var(--color-bg)] p-8\">\n      <h1 className=\"font-display text-4xl text-[var(--color-primary)] mb-4\">\n        Clinical Trials Search\n      </h1>\n      <p className=\"text-[var(--color-text-muted)]\">\n        Theme configured successfully\n      </p>\n      <button className=\"mt-4 px-4 py-2 bg-[var(--color-accent)] text-white rounded\">\n        Test Button\n      </button>\n    </div>\n  )\n}\nexport default App\n```",
+            "status": "pending",
+            "testStrategy": "Run `npm run dev` and visually verify: 1) Background is cream/off-white (#F8F6F3), 2) Heading uses Fraunces serif font in deep teal (#0D4F4F), 3) Button shows warm amber (#D4A843). Inspect elements in browser DevTools to confirm CSS variables are applied. Run `npm run build` to ensure Tailwind purges unused styles correctly."
+          },
+          {
+            "id": 7,
+            "title": "Create Environment File with Required API Keys",
+            "description": "Set up the .env file at project root with all required environment variables, create .env.example template for documentation, and configure .gitignore to exclude sensitive files.",
+            "dependencies": [
+              4,
+              6
+            ],
+            "details": "1. Create `.env` at project root with required variables:\n```\n# Elasticsearch Configuration\nES_URL=http://localhost:9200\nES_INDEX=clinical_trials\n\n# Anthropic API (required for LLM entity extraction)\nANTHROPIC_API_KEY=your-anthropic-api-key-here\n\n# Application Settings\nLOG_LEVEL=INFO\nCORS_ORIGINS=http://localhost:5173\n```\n\n2. Create `.env.example` for documentation (safe to commit):\n```\n# Copy this file to .env and fill in your values\n# Elasticsearch Configuration\nES_URL=http://localhost:9200\nES_INDEX=clinical_trials\n\n# Anthropic API (get from https://console.anthropic.com/)\nANTHROPIC_API_KEY=\n\n# Application Settings\nLOG_LEVEL=INFO\nCORS_ORIGINS=http://localhost:5173\n```\n\n3. Ensure `.gitignore` includes (create if not exists or append):\n```\n# Environment files\n.env\n.env.local\n.env.*.local\n\n# Python\n__pycache__/\n*.py[cod]\nvenv/\n.venv/\n\n# Node\nnode_modules/\ndist/\n\n# Elasticsearch data\nesdata/\n\n# IDE\n.idea/\n.vscode/\n*.swp\n```\n\n4. Create symlink or copy .env to backend directory for Python access:\n```bash\nln -s ../.env backend/.env\n# Or simply: cp .env backend/.env\n```\n\nVerification:\n1. Check .env is not tracked: `git status | grep -v '.env'`\n2. Verify backend can read settings: `cd backend && python -c \"from app.config import get_settings; print(get_settings().es_url)\"`\n3. Confirm .env.example is tracked: `git add .env.example`",
+            "status": "pending",
+            "testStrategy": "Verify .env file exists with `test -f .env && echo 'EXISTS'`. Verify .gitignore excludes .env with `git check-ignore .env && echo 'IGNORED'`. Test backend config loads by running `cd backend && python -c \"from app.config import get_settings; s = get_settings(); assert s.es_url == 'http://localhost:9200'\"`. Verify .env.example is trackable with `git add --dry-run .env.example`."
+          }
+        ]
       },
       {
         "id": 2,
@@ -23,7 +100,52 @@
           1
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create entities.py with ExtractedEntities, Enums, and LocationFilter",
+            "description": "Create the backend/app/models/entities.py file containing PhaseEnum, StatusEnum, LocationFilter, and ExtractedEntities Pydantic models with complete Field definitions, validation rules, and docstrings.",
+            "dependencies": [],
+            "details": "Create backend/app/models/entities.py with:\n1. PhaseEnum(str, Enum) with values: PHASE1, PHASE2, PHASE3, PHASE4, EARLY_PHASE1, NA\n2. StatusEnum(str, Enum) with values: RECRUITING, NOT_YET_RECRUITING, COMPLETED, ACTIVE_NOT_RECRUITING, TERMINATED, WITHDRAWN, SUSPENDED\n3. LocationFilter(BaseModel) with optional city, state, country string fields\n4. ExtractedEntities(BaseModel) with:\n   - phase: Optional[str] with Field description\n   - condition: Optional[str] for medical condition/disease\n   - status: Optional[str] for trial recruitment status\n   - location: Optional[LocationFilter] for geographic filtering\n   - sponsor: Optional[str] for sponsoring organization\n   - keyword: Optional[str] for gene, drug, or specific term\n   - age_group: Optional[str] for target age group\n   - enrollment_min/max: Optional[int] for enrollment range\n   - confidence: float with Field(default=0.8, ge=0.0, le=1.0)\n   - clarification: Optional[str] for follow-up questions\n5. Add __init__.py to models directory with proper exports",
+            "status": "pending",
+            "testStrategy": "Test PhaseEnum and StatusEnum contain all expected values. Test LocationFilter accepts partial data (city only, country only). Test ExtractedEntities validation: confidence must be 0.0-1.0, optional fields accept None, all Field descriptions are set correctly."
+          },
+          {
+            "id": 2,
+            "title": "Create schemas.py with API Request/Response Models",
+            "description": "Create the backend/app/models/schemas.py file containing Sponsor, Facility, TrialResult, SearchResponse, SuggestionResponse, and ErrorResponse Pydantic models for API serialization.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create backend/app/models/schemas.py with:\n1. Sponsor(BaseModel): name (str, required), agency_class (Optional[str]), lead_or_collaborator (Optional[str])\n2. Facility(BaseModel): name, city, state, country (all Optional[str])\n3. TrialResult(BaseModel):\n   - nct_id: str (required)\n   - brief_title: str (required)\n   - official_title: Optional[str]\n   - phase: Optional[str]\n   - overall_status: Optional[str]\n   - enrollment: Optional[int]\n   - sponsors: List[Sponsor] = []\n   - facilities: List[Facility] = []\n   - brief_summaries_description: Optional[str]\n   - start_date: Optional[str]\n   - age: List[Dict[str, str]] = []\n4. SearchResponse(BaseModel): query_interpretation (ExtractedEntities), results (List[TrialResult]), total (int), page (int), page_size (int), clarification (Optional[str])\n5. SuggestionResponse(BaseModel): suggestions (List[str])\n6. ErrorResponse(BaseModel): error (str), detail (str)\n7. Import ExtractedEntities from entities module",
+            "status": "pending",
+            "testStrategy": "Test TrialResult requires nct_id and brief_title. Test SearchResponse serialization with nested ExtractedEntities and List[TrialResult]. Test Sponsor and Facility with partial data. Verify empty list defaults for sponsors, facilities, and age fields."
+          },
+          {
+            "id": 3,
+            "title": "Create Frontend TypeScript Interfaces Matching Pydantic Models",
+            "description": "Create the frontend/src/types/index.ts file with TypeScript interfaces that exactly mirror all Pydantic models for type-safe API communication.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create frontend/src/types/index.ts with:\n1. LocationFilter interface: city?, state?, country? (all optional strings)\n2. ExtractedEntities interface: phase?, condition?, status?, location?: LocationFilter, sponsor?, keyword?, age_group? (optional strings), enrollment_min?, enrollment_max? (optional numbers), confidence: number (required), clarification?: string\n3. Sponsor interface: name: string (required), agency_class?: string, lead_or_collaborator?: string\n4. Facility interface: name?, city?, state?, country? (all optional strings)\n5. TrialResult interface: nct_id: string, brief_title: string (required), optional fields for official_title, phase, overall_status, enrollment (number), sponsors: Sponsor[], facilities: Facility[], brief_summaries_description?, start_date?, age: { age_category: string }[]\n6. SearchResponse interface: query_interpretation: ExtractedEntities, results: TrialResult[], total: number, page: number, page_size: number, clarification?: string\n7. SuggestionResponse interface: suggestions: string[]\n8. Export all interfaces",
+            "status": "pending",
+            "testStrategy": "Verify TypeScript compilation succeeds with no errors. Test interface usage by creating sample objects matching each interface. Verify optional fields compile correctly. Test that TrialResult[] can be assigned to SearchResponse.results."
+          },
+          {
+            "id": 4,
+            "title": "Add Unit Tests for Model Validation with Clinical Trials Sample Data",
+            "description": "Create comprehensive unit tests for all Pydantic models using sample data from clinical_trials.json to verify validation rules, optional field handling, and serialization.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create backend/tests/test_models.py with:\n1. Import pytest and all models from entities.py and schemas.py\n2. Load sample data from clinical_trials.json for realistic test cases\n3. Test ExtractedEntities:\n   - Test confidence validation (valid: 0.0, 0.5, 1.0; invalid: -0.1, 1.5)\n   - Test all optional fields accept None\n   - Test LocationFilter nested validation\n4. Test PhaseEnum and StatusEnum:\n   - Verify all enum values are accessible\n   - Test enum string serialization\n5. Test TrialResult:\n   - Test with complete data from clinical_trials.json\n   - Test with minimal required fields only (nct_id, brief_title)\n   - Test sponsors and facilities as empty lists\n6. Test SearchResponse:\n   - Test with nested ExtractedEntities and List[TrialResult]\n   - Test pagination fields (total, page, page_size)\n7. Test round-trip serialization: model.model_dump() -> Model(**data)\n8. Test ErrorResponse with error and detail strings\n9. Add conftest.py with sample data fixtures",
+            "status": "pending",
+            "testStrategy": "Run pytest with coverage to ensure all model branches are tested. Verify tests pass with valid data and raise ValidationError for invalid data. Test edge cases: empty strings, zero values, boundary values for confidence (0.0, 1.0). Ensure tests are isolated and deterministic."
+          }
+        ]
       },
       {
         "id": 3,
@@ -36,7 +158,62 @@
           1
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create create_index.py with complete Elasticsearch field mappings",
+            "description": "Implement the create_index.py script with optimized field mappings for all clinical trial fields including keyword types (nct_id, phase, overall_status, gender, study_type), text fields with clinical_analyzer for searchable content (brief_title, official_title, descriptions), and search_as_you_type sub-fields for title autocomplete functionality.",
+            "dependencies": [],
+            "details": "Create backend/scripts/create_index.py with: 1) Custom 'clinical_analyzer' using standard tokenizer with lowercase and asciifolding filters. 2) Keyword mappings for: nct_id, phase, overall_status, gender, study_type, intervention_model, primary_purpose, source, acronym. 3) Text fields with clinical_analyzer for: brief_title, official_title, brief_summaries_description, detailed_description. 4) Add search_as_you_type sub-field for brief_title and official_title to enable autocomplete suggestions. 5) Integer mapping for enrollment field. 6) Date mappings for start_date, completion_date, primary_completion_date. 7) Include index settings with number_of_shards=1 and number_of_replicas=0 for development. 8) Add logic to delete existing index before recreation to allow re-running the script. Handle Elasticsearch connection errors gracefully.",
+            "status": "pending",
+            "testStrategy": "Verify index creation with `curl -X GET 'localhost:9200/clinical_trials/_mapping?pretty'`. Check that all fields have correct types. Test that clinical_analyzer is properly configured by analyzing sample text. Verify search_as_you_type fields exist under brief_title.suggest and official_title.suggest."
+          },
+          {
+            "id": 2,
+            "title": "Define nested mappings for complex data structures",
+            "description": "Add nested field mappings for sponsors, facilities, design_outcomes, and age arrays with appropriate field types for each property to support nested queries in Elasticsearch.",
+            "dependencies": [
+              1
+            ],
+            "details": "Extend create_index.py mapping to include: 1) 'sponsors' nested type with: name (text with keyword sub-field), agency_class (keyword), lead_or_collaborator (keyword). 2) 'facilities' nested type with: name (text), city (keyword), state (keyword), country (keyword), zip (keyword), status (keyword). 3) 'design_outcomes' nested type with: outcome_type (keyword), measure (text), time_frame (text), description (text). 4) 'age' nested type with: age_category (keyword). Nested types are required because these are arrays of objects that need independent querying - using 'object' type would flatten them and cause cross-object matching issues. Ensure proper handling of empty arrays and null values in nested fields.",
+            "status": "pending",
+            "testStrategy": "Create test documents with nested data and verify with nested queries. Test query: `{\"query\": {\"nested\": {\"path\": \"sponsors\", \"query\": {\"match\": {\"sponsors.name\": \"AstraZeneca\"}}}}}`. Verify facilities can be filtered by country. Test that empty arrays don't cause indexing errors."
+          },
+          {
+            "id": 3,
+            "title": "Implement ingest.py with document transformation logic",
+            "description": "Create the ingest.py script with robust document transformation including enrollment string-to-integer conversion, null value handling for optional fields, and proper date format handling for Elasticsearch compatibility.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create backend/scripts/ingest.py with transform_document() function that: 1) Converts 'enrollment' from string to integer, handling 'None', empty strings, and invalid values by setting to None. 2) Ensures nested arrays (sponsors, facilities, design_outcomes, age) default to empty arrays [] if null or missing. 3) Handles date fields (start_date, completion_date, primary_completion_date) - data shows ISO format with 'T00:00:00.000Z' which ES should accept directly. 4) Cleans string fields by stripping whitespace. 5) Handles 'None' string values in fields like number_of_groups by converting to null. 6) Preserves all other fields as-is. Add validation logging to identify problematic documents during development.",
+            "status": "pending",
+            "testStrategy": "Unit test transform_document with edge cases: enrollment='540' -> 540, enrollment='None' -> None, enrollment='' -> None. Test nested array defaults. Test with actual sample document from clinical_trials.json. Verify all 1000 documents pass transformation without errors."
+          },
+          {
+            "id": 4,
+            "title": "Add bulk indexing with error handling and progress reporting",
+            "description": "Implement the bulk indexing functionality using elasticsearch-py helpers.bulk() with proper error handling, progress reporting, and retry logic for failed documents.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Enhance ingest.py with: 1) generate_bulk_actions() generator that yields properly formatted bulk action dicts with _index, _id (nct_id), and _source. 2) Use elasticsearch.helpers.bulk() for efficient batching (default 500 docs per batch). 3) Add progress reporting using tqdm or simple print statements showing documents processed. 4) Capture and log failed documents with their nct_id and error reason. 5) Add --dry-run flag to validate transformations without indexing. 6) Implement retry logic for transient ES errors. 7) Call es.indices.refresh() after bulk indexing to make documents immediately searchable. 8) Add command-line argument for filepath with default to '../../clinical_trials.json'. 9) Report final statistics: total docs, successful, failed.",
+            "status": "pending",
+            "testStrategy": "Run ingestion on full dataset and verify: 'curl -X GET localhost:9200/clinical_trials/_count' returns 1000. Test with intentionally malformed document to verify error handling. Verify progress output shows batch completion. Test dry-run mode doesn't modify index."
+          },
+          {
+            "id": 5,
+            "title": "Create verification script with sample queries for each field type",
+            "description": "Implement a verification script that tests the indexed data with sample queries covering term queries for keywords, nested queries for complex fields, range queries for dates/numbers, and full-text search for analyzed fields.",
+            "dependencies": [
+              4
+            ],
+            "details": "Create backend/scripts/verify_index.py with: 1) Term query tests: search phase=PHASE2, overall_status=NOT_YET_RECRUITING, nct_id exact match. 2) Nested query tests: find trials by sponsor name (AstraZeneca), filter by facility country (United States), search design_outcomes by outcome_type=primary. 3) Range query tests: filter by enrollment >= 100, date range query for start_date. 4) Full-text search tests: multi_match query on brief_title and official_title, search brief_summaries_description for medical terms. 5) Autocomplete test: search_as_you_type query on brief_title.suggest. 6) Aggregation test: get counts by phase, status distribution. Each test should print expected vs actual results and pass/fail status. Exit with non-zero code if any test fails.",
+            "status": "pending",
+            "testStrategy": "Run verify_index.py after successful ingestion. All 6 query type tests should pass. Verify aggregations return expected phase distribution. Test should complete within 5 seconds. Manual spot-check results against raw JSON data to confirm accuracy."
+          }
+        ]
       },
       {
         "id": 4,
@@ -49,7 +226,76 @@
           2
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create LLM Service Module with Claude API Client Setup",
+            "description": "Create the backend/app/services/llm_service.py module with anthropic SDK client initialization, async patterns, and configuration integration using the Pydantic Settings from config.py.",
+            "dependencies": [],
+            "details": "Create the llm_service.py file with proper imports (anthropic, json, typing). Initialize the Anthropic client using settings.anthropic_api_key from get_settings(). Implement the async extract_entities() function signature that accepts a query string and returns ExtractedEntities. Use proper async/await patterns for non-blocking I/O. Handle client initialization failures gracefully with appropriate error logging. Ensure the client is created fresh per request or use connection pooling best practices for the anthropic SDK.",
+            "status": "pending",
+            "testStrategy": "Test client initialization with valid API key from environment. Verify get_settings() is called correctly. Test that missing API key raises appropriate error. Mock the anthropic client to verify proper instantiation parameters. Test async function signature is properly awaitable."
+          },
+          {
+            "id": 2,
+            "title": "Design Comprehensive System Prompt with Field Definitions and JSON Schema",
+            "description": "Create the SYSTEM_PROMPT constant with complete field definitions for all extractable entities (phase, condition, status, location, sponsor, keyword, age_group, enrollment_min/max), valid enum values, and expected JSON output schema.",
+            "dependencies": [
+              1
+            ],
+            "details": "Define the SYSTEM_PROMPT as a multi-line string with: 1) Role definition as clinical trials search assistant, 2) Complete list of extractable fields with their types and valid enum values (PHASE1-PHASE4, EARLY_PHASE1, NA for phase; RECRUITING, NOT_YET_RECRUITING, COMPLETED, etc. for status), 3) LocationFilter structure with city/state/country fields, 4) Confidence scoring rules (1.0 = very clear, 0.5 = ambiguous, lower for unclear), 5) JSON output schema with all fields including optional clarification field, 6) Clear rules about only extracting clearly stated entities and returning null for unmentioned fields. Include example output format in the prompt.",
+            "status": "pending",
+            "testStrategy": "Verify prompt is valid string with no syntax errors. Manually test prompt with Claude API playground to ensure it produces valid JSON. Verify all enum values match the ExtractedEntities model. Test prompt clarity by checking if example queries produce expected structured output."
+          },
+          {
+            "id": 3,
+            "title": "Implement Domain Synonym Mappings in System Prompt",
+            "description": "Add comprehensive domain synonym mappings to the system prompt including status synonyms (open->RECRUITING, closed->COMPLETED), phase variations (phase I/P1->PHASE1), location normalizations (USA/US->United States), and enrollment interpretations (large trials->enrollment_min: 500).",
+            "dependencies": [
+              2
+            ],
+            "details": "Extend SYSTEM_PROMPT with detailed synonym mappings section: 1) Status synonyms: open/recruiting/active/enrolling->RECRUITING, closed/finished/completed/done->COMPLETED, upcoming/not started/planned->NOT_YET_RECRUITING, running/ongoing->RECRUITING or ACTIVE_NOT_RECRUITING, 2) Phase mappings: phase 1/phase I/P1->PHASE1 through phase 4/phase IV/P4->PHASE4, 3) Location normalization: USA/US/United States/America->location.country: United States, UK/Britain/England->United Kingdom, 4) Enrollment interpretations: large trials/big studies->enrollment_min: 500, small studies->enrollment_max: 100. Also create backend/app/utils/synonyms.py with STATUS_SYNONYMS and PHASE_MAPPINGS dictionaries for reference and potential server-side validation.",
+            "status": "pending",
+            "testStrategy": "Test each synonym category with sample queries: 'open cancer trials' should map to status=RECRUITING, 'phase I studies' to phase=PHASE1, 'trials in the US' to location.country='United States'. Verify both common and edge case synonyms work correctly. Test that original enum values still work (RECRUITING should still work directly)."
+          },
+          {
+            "id": 4,
+            "title": "Add Clarification Detection Logic for Ambiguous Queries",
+            "description": "Implement clarification detection within the system prompt for ambiguous, misspelled, overly broad, or gibberish queries, including confidence scoring logic and helpful clarification question generation.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Enhance SYSTEM_PROMPT with clarification rules: 1) Set confidence based on query clarity (1.0 = all terms recognized and unambiguous, 0.7-0.9 = mostly clear with minor uncertainty, 0.5-0.7 = some ambiguity, below 0.5 = significant issues), 2) Trigger clarification for: misspelled medical terms that can't be auto-corrected, overly broad queries like just 'trials' or 'medicine', gibberish or unrelated queries, conflicting filters (e.g., completed AND recruiting), 3) Generate helpful clarification questions: 'Did you mean [suggestion]?', 'Which condition are you interested in?', 'Could you specify a phase or status?', 4) Handle edge cases: empty queries, single-word queries, queries with only stop words. The clarification field should be null when query is clear enough (confidence >= 0.7).",
+            "status": "pending",
+            "testStrategy": "Test with ambiguous queries: 'trials' should return low confidence with clarification asking for condition. Test misspellings: 'diabeties' should still extract diabetes with slight confidence reduction. Test gibberish: 'asdfasdf' should return confidence near 0 with clarification. Test conflicting: 'completed recruiting trials' should ask for clarification. Verify clear queries have null clarification."
+          },
+          {
+            "id": 5,
+            "title": "Implement JSON Response Parsing with Robust Error Handling",
+            "description": "Implement the complete extract_entities() function with Claude API message creation, JSON response parsing, LocationFilter conversion, and comprehensive error handling for malformed LLM output, API failures, and edge cases.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Complete the extract_entities() async function: 1) Call client.messages.create() with model='claude-sonnet-4-20250514', max_tokens=1024, system=SYSTEM_PROMPT, and user message with query, 2) Extract response text from message.content[0].text, 3) Parse JSON with json.loads() wrapped in try/except, 4) Convert location dict to LocationFilter object if present, 5) Construct and return ExtractedEntities using **data unpacking, 6) Handle JSONDecodeError with fallback ExtractedEntities(confidence=0.3, clarification='I had trouble understanding your query...'), 7) Handle anthropic.APIError with appropriate fallback and logging, 8) Handle unexpected exceptions with generic fallback, 9) Add input validation for empty/whitespace-only queries returning immediate fallback. Consider using regex to extract JSON from response if LLM includes extra text.",
+            "status": "pending",
+            "testStrategy": "Test successful parsing with mock valid JSON response. Test JSONDecodeError handling by mocking malformed response. Test API error handling by mocking anthropic.APIError. Test empty query returns appropriate fallback. Test location dict conversion to LocationFilter. Verify all ExtractedEntities fields are properly populated. Test response with extra text around JSON is handled gracefully."
+          },
+          {
+            "id": 6,
+            "title": "Create Unit Tests with Diverse Query Types",
+            "description": "Create comprehensive unit tests in backend/tests/test_llm_service.py covering simple queries, complex multi-filter queries, ambiguous queries, misspelled queries, gibberish input, and edge cases with proper mocking of the Claude API.",
+            "dependencies": [
+              5
+            ],
+            "details": "Create test file with pytest fixtures for mocking anthropic client. Test categories: 1) Simple queries: 'Phase 3 cancer trials' -> phase=PHASE3, condition=cancer; 'recruiting diabetes studies' -> status=RECRUITING, condition=diabetes, 2) Complex queries: 'Phase 2 lung cancer trials in California sponsored by Pfizer' -> all fields extracted correctly, 3) Synonym handling: 'open melanoma trials' -> status=RECRUITING; 'P1 studies' -> phase=PHASE1, 4) Ambiguous queries: 'trials' -> low confidence, has clarification; 'medicine studies' -> asks for specifics, 5) Misspellings: 'diabeties trials' -> still extracts diabetes with confidence < 1.0, 6) Gibberish: 'asdfghjkl' -> confidence near 0, has clarification, 7) Edge cases: empty string, whitespace only, very long query, SQL injection attempt, 8) Error handling: test JSONDecodeError fallback, API error fallback. Use unittest.mock.patch or pytest-mock to mock anthropic.Anthropic client.",
+            "status": "pending",
+            "testStrategy": "Run pytest with coverage to ensure >90% code coverage on llm_service.py. Verify all test cases pass. Test isolation by ensuring no actual API calls are made (all mocked). Verify fixtures properly reset between tests. Run tests multiple times to ensure deterministic behavior. Check test execution time is under 5 seconds (no real API calls)."
+          }
+        ]
       },
       {
         "id": 5,
@@ -63,7 +309,79 @@
           4
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create es_service.py with Elasticsearch Client Initialization",
+            "description": "Set up the ElasticsearchService class with proper client initialization, connection handling, and configuration loading from settings.",
+            "dependencies": [],
+            "details": "Create `backend/app/services/es_service.py` with the ElasticsearchService class. Initialize the Elasticsearch client using settings from `get_settings()` including `es_url` and `es_index`. Implement proper imports for Elasticsearch, typing modules, config, and model dependencies (ExtractedEntities, TrialResult, Sponsor, Facility). Add connection error handling and ensure the service can gracefully handle connection failures. Create a module-level singleton instance `es_service = ElasticsearchService()` for dependency injection.",
+            "status": "pending",
+            "testStrategy": "Test client initialization with valid and invalid ES URLs. Verify connection handling by mocking Elasticsearch client. Test that settings are properly loaded and applied to the client configuration."
+          },
+          {
+            "id": 2,
+            "title": "Implement build_query Method with Bool Query Construction",
+            "description": "Create the core build_query method that constructs Elasticsearch bool queries with must, filter, and should clause arrays.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement `build_query(self, entities: ExtractedEntities) -> Dict[str, Any]` method that initializes empty lists for must_clauses, filter_clauses, and should_clauses. Build the final bool query structure by conditionally adding these arrays to the query dict only when they contain clauses. Handle the edge case where no entities are provided by returning a `match_all` query. Ensure proper typing with Dict[str, Any] return type. The method should gracefully handle None/missing values for all entity fields.",
+            "status": "pending",
+            "testStrategy": "Unit test with empty ExtractedEntities returns match_all query. Test that bool query structure is correctly formed with various clause combinations. Verify None values don't cause errors."
+          },
+          {
+            "id": 3,
+            "title": "Add Query Clause Builders for Simple Entity Types",
+            "description": "Implement query clause builders for phase, status (term filters), condition/keyword (multi_match), and enrollment (range queries).",
+            "dependencies": [
+              2
+            ],
+            "details": "Within build_query, add clause builders: 1) Phase - term filter on 'phase' field added to filter_clauses, 2) Status - term filter on 'overall_status' field, 3) Condition - multi_match query on brief_title^3, official_title^2, brief_summaries_description with type='best_fields' and fuzziness='AUTO' added to must_clauses, 4) Keyword - multi_match with phrase_prefix type on title and description fields, 5) Enrollment range - range query with optional gte/lte bounds based on enrollment_min/enrollment_max. Each builder should check for None before adding clauses.",
+            "status": "pending",
+            "testStrategy": "Test each clause builder independently: phase='PHASE2' produces correct term filter, condition='asthma' produces multi_match with boosted fields, enrollment range with min-only, max-only, and both bounds. Verify query structure matches expected Elasticsearch DSL format."
+          },
+          {
+            "id": 4,
+            "title": "Implement Nested Queries for Location, Sponsor, and Age Group",
+            "description": "Create nested query builders for facilities (location), sponsors, and age arrays with proper path handling.",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement nested queries: 1) Location - build nested query on 'facilities' path with bool/must containing term filters for country, state, city (only include filters for non-None values), 2) Sponsor - nested query on 'sponsors' path with match query on 'sponsors.name', 3) Age group - nested query on 'age' path with term filter on 'age.age_category'. Each nested query must specify the correct path and handle partial data (e.g., location with only country specified). Add location_filters list construction that only includes non-None location components.",
+            "status": "pending",
+            "testStrategy": "Test location nested query with all combinations: country-only, state+country, city+state+country. Test sponsor nested query produces correct path and match structure. Test age_group nested query. Verify nested query structure matches ES nested query requirements."
+          },
+          {
+            "id": 5,
+            "title": "Create Search Method with Pagination and Result Mapping",
+            "description": "Implement the async search method with pagination, sorting, _source field selection, and result mapping to TrialResult models.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Implement `async def search(self, entities: ExtractedEntities, page: int = 1, page_size: int = 10) -> tuple[List[TrialResult], int]`. Calculate 'from' offset as (page-1)*page_size. Execute search with: query from build_query, from/size for pagination, sort by _score desc then enrollment desc, _source limited to required fields (nct_id, brief_title, official_title, phase, overall_status, enrollment, sponsors, facilities, brief_summaries_description, start_date, age). Map response hits to TrialResult objects, converting sponsors to Sponsor models and limiting facilities to first 3 entries as Facility models. Return tuple of results list and total count from response['hits']['total']['value'].",
+            "status": "pending",
+            "testStrategy": "Test pagination calculates correct from/size values. Mock ES response and verify result mapping to TrialResult is correct. Test facilities are limited to 3. Test empty response returns empty list with 0 total. Verify sorting parameters are correctly applied."
+          },
+          {
+            "id": 6,
+            "title": "Add Unit Tests for Query DSL Output",
+            "description": "Create comprehensive unit tests for query building with various entity combinations and edge cases.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "Create `backend/tests/test_es_service.py` with unit tests covering: 1) Empty entities -> match_all, 2) Single field extraction (phase only, condition only, location only), 3) Multiple combined fields, 4) All nested query types (location with partial data, sponsor, age_group), 5) Range queries with min-only, max-only, both bounds, 6) Verify multi_match field boosting and fuzziness settings, 7) Test search method pagination offset calculation, 8) Test result mapping with mock ES responses. Use pytest fixtures for ExtractedEntities with various configurations. Mock Elasticsearch client for search tests.",
+            "status": "pending",
+            "testStrategy": "Run pytest on test_es_service.py. Verify 100% coverage of build_query paths. Test each query type produces valid Elasticsearch DSL that can be validated against ES query structure. Integration test against local ES instance if available."
+          }
+        ]
       },
       {
         "id": 6,
@@ -76,7 +394,51 @@
           3
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create suggestion.py with Elasticsearch client and index configuration",
+            "description": "Set up the base SuggestionService class with Elasticsearch connection, index configuration, and core initialization logic including settings integration.",
+            "dependencies": [],
+            "details": "Create `backend/app/services/suggestion.py` with the SuggestionService class. Initialize Elasticsearch client using settings from get_settings() (es_url and es_index). Include proper imports for elasticsearch, typing (List), and config module. Set up the singleton instance pattern with `suggestion_service = SuggestionService()`. Ensure the class follows the same patterns established in other services (es_service.py). Add minimum prefix length constant (MIN_PREFIX_LENGTH = 2) and default limit constant (DEFAULT_LIMIT = 10) for performance optimization.",
+            "status": "pending",
+            "testStrategy": "Verify module imports correctly without errors. Test that SuggestionService initializes with valid Elasticsearch connection. Confirm settings are properly loaded from config. Test that the singleton instance is accessible from other modules."
+          },
+          {
+            "id": 2,
+            "title": "Implement get_suggestions method with search_as_you_type and bool_prefix multi_match",
+            "description": "Implement the primary get_suggestions method using Elasticsearch search_as_you_type field type with bool_prefix multi_match query on brief_title.suggest fields including _2gram and _3gram analyzers.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement `async def get_suggestions(self, prefix: str, limit: int = 10) -> List[str]` method. Add early return for empty prefix or prefix < 2 characters to optimize performance. Build Elasticsearch query using multi_match with type='bool_prefix' targeting 'brief_title.suggest', 'brief_title.suggest._2gram', and 'brief_title.suggest._3gram' fields. Use aggregations with 'significant_text' on 'brief_title' field with filter_duplicate_text=True for deduplication. Set size=0 on main query since we only need aggregations. Extract suggestions from aggregations buckets. Apply limit parameter to final results.",
+            "status": "pending",
+            "testStrategy": "Test with prefix 'can' returns Cancer-related suggestions. Test with prefix 'dia' returns Diabetes suggestions. Verify empty string returns empty list. Verify single character returns empty list. Test response time is under 100ms for acceptable type-ahead UX. Verify no duplicate suggestions in results."
+          },
+          {
+            "id": 3,
+            "title": "Add fallback logic with phrase_prefix query and title extraction",
+            "description": "Implement fallback mechanism using phrase_prefix query when the primary search_as_you_type approach returns no results, including intelligent title word extraction and deduplication.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Extend get_suggestions method with fallback logic triggered when primary aggregation returns empty results. Implement secondary Elasticsearch query using multi_match with type='phrase_prefix' on 'brief_title' and 'official_title' fields. Set _source to only return 'brief_title' for performance. Extract first 6 words from matching titles as suggestion text. Implement case-insensitive deduplication using a seen set (convert to lowercase for comparison). Ensure fallback respects the same limit parameter. Add the fallback results to suggestions list only if primary approach yielded no results.",
+            "status": "pending",
+            "testStrategy": "Test fallback triggers when primary query returns empty. Verify deduplication works (same title different case not duplicated). Test that fallback respects limit parameter. Verify extracted suggestions contain meaningful partial titles (first 6 words). Test edge cases like very short titles."
+          },
+          {
+            "id": 4,
+            "title": "Create get_condition_suggestions helper with common condition names",
+            "description": "Implement a fast condition-specific suggestion helper method using a predefined list of common medical conditions for instant matching without Elasticsearch queries.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement `async def get_condition_suggestions(self, prefix: str) -> List[str]` method. Define a constant list of common clinical trial conditions: 'Breast Cancer', 'Lung Cancer', 'Diabetes', 'Asthma', 'COVID-19', 'Heart Disease', 'Alzheimer\\'s', 'Melanoma', 'Leukemia', 'Rheumatoid Arthritis', 'Multiple Sclerosis'. Use case-insensitive prefix matching with str.lower().startswith(). Return maximum 5 matching conditions for fast response. This provides instant suggestions without Elasticsearch latency for common conditions. Consider adding this list as a class constant for maintainability.",
+            "status": "pending",
+            "testStrategy": "Test 'brea' returns 'Breast Cancer'. Test 'lung' returns 'Lung Cancer'. Test case insensitivity ('DIA' matches 'Diabetes'). Verify maximum 5 results returned. Test no matches returns empty list. Verify response time is near-instant (no ES query)."
+          }
+        ]
       },
       {
         "id": 7,
@@ -91,7 +453,61 @@
           6
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create main.py with FastAPI App Initialization and CORS Configuration",
+            "description": "Implement the main FastAPI application entry point with proper app initialization, CORS middleware configured for Vite dev server origins, and global exception handler for consistent error responses.",
+            "dependencies": [],
+            "details": "Create `backend/app/main.py` with FastAPI app instance configured with title='Clinical Trials Search API', description, and version. Add CORSMiddleware with allow_origins for localhost:5173, localhost:3000, and 127.0.0.1:5173. Set allow_credentials=True, allow_methods=['*'], allow_headers=['*']. Implement global exception handler using @app.exception_handler(Exception) that returns JSONResponse with status_code=500 and structured error content including 'error' and 'detail' fields. Add uvicorn runner in __main__ block with host='0.0.0.0' and port=8000. Import get_settings from config for environment-based configuration.",
+            "status": "pending",
+            "testStrategy": "Test CORS headers by making requests from different origins using curl with -H 'Origin: http://localhost:5173'. Verify Access-Control-Allow-Origin header in response. Test global exception handler by triggering an error and verifying JSON error response format with correct status code."
+          },
+          {
+            "id": 2,
+            "title": "Create Search Router with /api/search/{query} Endpoint and Pagination",
+            "description": "Implement the search.py router file with the /api/search/{query} GET endpoint that accepts pagination parameters with proper validation constraints.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create `backend/app/routers/search.py` with APIRouter configured with prefix='/api' and tags=['search']. Define the search_trials endpoint at GET '/search/{query}' with path parameter query (str) and Query parameters: page (int, default=1, ge=1) and page_size (int, default=10, ge=1, le=100). Set response_model=SearchResponse. Add proper docstring explaining the endpoint purpose. Import required dependencies: APIRouter, Query, HTTPException from fastapi, and the service modules (llm_service, es_service) and schema models (SearchResponse). Include the router in main.py using app.include_router(search.router).",
+            "status": "pending",
+            "testStrategy": "Test endpoint with curl: GET /api/search/cancer?page=1&page_size=10. Verify pagination validation by testing page=0 (should fail), page_size=101 (should fail), and valid values. Check OpenAPI schema at /docs shows correct parameter constraints."
+          },
+          {
+            "id": 3,
+            "title": "Implement Search Endpoint Logic with Entity Extraction and ES Query Pipeline",
+            "description": "Complete the search endpoint implementation by wiring together the LLM entity extraction, Elasticsearch query building, and result formatting into a coherent pipeline.",
+            "dependencies": [
+              2
+            ],
+            "details": "Inside the search_trials endpoint function: 1) Call await extract_entities(query) from llm_service to get ExtractedEntities object, 2) Pass entities to await es_service.search(entities, page, page_size) which returns (results, total) tuple, 3) Construct and return SearchResponse with query_interpretation=entities, results=results, total=total, page=page, page_size=page_size, clarification=entities.clarification. Wrap entire logic in try/except block, catching Exception and raising HTTPException(status_code=500, detail=str(e)). Add logging using Python logging module to log incoming queries and any errors for debugging purposes.",
+            "status": "pending",
+            "testStrategy": "Test full pipeline with curl: GET /api/search/Phase%203%20lung%20cancer. Verify response contains query_interpretation with extracted entities, results array, total count, and pagination info. Test error handling by mocking service failures and verifying 500 response with error details."
+          },
+          {
+            "id": 4,
+            "title": "Add /api/suggest Endpoint with Query Validation",
+            "description": "Implement the suggestion endpoint that provides type-ahead suggestions for partial query text with proper input validation.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add get_suggestions endpoint to search.py router at GET '/suggest' with response_model=SuggestionResponse. Accept query parameter q using Query(..., min_length=2, description='Partial query text') where ... makes it required. Call await suggestion_service.get_suggestions(q) to fetch suggestions. Return SuggestionResponse(suggestions=suggestions). Implement try/except block with HTTPException(status_code=500, detail=str(e)) for error handling. Import suggestion_service from services and SuggestionResponse from schemas. Add logging for suggestion requests.",
+            "status": "pending",
+            "testStrategy": "Test with curl: GET /api/suggest?q=can and verify suggestions returned. Test min_length validation with q=a (should fail with 422). Test empty query parameter (should fail). Verify response time is acceptable for type-ahead UX (<100ms target)."
+          },
+          {
+            "id": 5,
+            "title": "Add Health Check Endpoint and OpenAPI Documentation Configuration",
+            "description": "Implement the health check endpoint for service monitoring and configure OpenAPI documentation with proper metadata and examples.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add health_check endpoint at GET '/health' in main.py that returns {'status': 'healthy'}. This endpoint should be simple and not include complex logic to ensure reliable health checking. Enhance FastAPI app initialization with additional OpenAPI metadata: contact info, license, terms_of_service if applicable. Add response examples to endpoints using response_model_examples or OpenAPI extra schema. Verify /docs (Swagger UI) and /redoc endpoints are accessible and display correct API documentation. Add tags_metadata to describe the 'search' tag. Consider adding a /ready endpoint that checks ES connectivity for Kubernetes-style readiness probes.",
+            "status": "pending",
+            "testStrategy": "Verify health endpoint: curl http://localhost:8000/health returns {\"status\": \"healthy\"}. Access /docs in browser and verify Swagger UI loads with correct API title, description, and version. Test all endpoints appear with proper documentation including parameters, response schemas, and examples."
+          }
+        ]
       },
       {
         "id": 8,
@@ -105,7 +521,75 @@
           7
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create API Client Service with Type-Safe Fetch Functions",
+            "description": "Implement frontend/src/services/api.ts with searchTrials and getSuggestions functions using the Fetch API with proper error handling, TypeScript generics, and response type validation.",
+            "dependencies": [],
+            "details": "Create the API client module at frontend/src/services/api.ts. Define API_BASE constant pointing to localhost:8000/api. Implement searchTrials function that accepts query string, optional page (default 1), and optional pageSize (default 10) parameters, returning Promise<SearchResponse>. Use encodeURIComponent for query parameter encoding. Implement getSuggestions function that returns empty array for prefixes under 2 characters, otherwise fetches from /suggest endpoint and returns string array. Add proper error handling with descriptive error messages for failed requests. Ensure the module exports are properly typed to match backend response schemas (SearchResponse, SuggestionResponse types from ../types). Add request timeout handling and consider adding retry logic for transient failures.",
+            "status": "pending",
+            "testStrategy": "Unit test searchTrials with mocked fetch responses for success and error cases. Test getSuggestions returns empty array for short prefixes. Test URL encoding works correctly for special characters in queries. Verify TypeScript types match expected backend response structure."
+          },
+          {
+            "id": 2,
+            "title": "Build SearchBar Component with Debounced Input and Cycling Placeholders",
+            "description": "Create the SearchBar component with debounced suggestion fetching (300ms), cycling example placeholder text animation (4s interval), and amber focus ring styling.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create frontend/src/components/SearchBar.tsx with useState hooks for query, suggestions, showSuggestions, and placeholderIndex. Define EXAMPLE_QUERIES array with 4 example queries (Phase 3 lung cancer, recruiting diabetes, BRCA1 breast cancer, open melanoma). Implement useEffect with setInterval for 4-second placeholder cycling. Create handleInputChange with useRef for debounce timer, clearing previous timeout and setting new 300ms delayed suggestion fetch. Implement handleSubmit preventing default, validating non-empty query, calling onSearch prop, and hiding suggestions. Style input with Tailwind: w-full, px-6 py-4, text-lg, rounded-xl, border-2 border-teal-200, focus:border-amber-400 focus:ring-4 focus:ring-amber-100, italic serif placeholder. Add disabled submit button styling with opacity-50 when isLoading. Ensure mobile responsiveness with proper max-width constraints.",
+            "status": "pending",
+            "testStrategy": "Test debounce timing with jest.useFakeTimers - verify getSuggestions not called until 300ms after typing stops. Test placeholder cycling changes text every 4 seconds. Test form submission calls onSearch with trimmed query. Verify focus states apply correct amber ring styling."
+          },
+          {
+            "id": 3,
+            "title": "Implement Suggestion Dropdown with Animations and Click Handling",
+            "description": "Add the suggestions dropdown to SearchBar with smooth slideDown animation, click-to-select functionality, hover states, and outside-click dismissal behavior.",
+            "dependencies": [
+              2
+            ],
+            "details": "Extend SearchBar component to render suggestion dropdown conditionally when showSuggestions is true and suggestions array is not empty. Style dropdown ul with absolute positioning, z-10, full width, mt-2, white background, rounded-lg, shadow-lg, border border-gray-200, and animate-slideDown class. Render each suggestion as li with px-4 py-3 padding, cursor-pointer, hover:bg-teal-50 hover state, border-b border-gray-100 dividers (except last item). Implement onClick handler that sets query value, calls onSearch, and hides suggestions. Add useEffect with click event listener on document to detect outside clicks and close dropdown. Add keyboard navigation support with arrow keys for accessibility - track selectedIndex state, handle ArrowUp/ArrowDown to change selection, Enter to select. Ensure dropdown is mobile-friendly with touch-friendly tap targets (minimum 44px height).",
+            "status": "pending",
+            "testStrategy": "Test dropdown appears when suggestions array populated and showSuggestions true. Test clicking suggestion updates query and triggers search. Test clicking outside dropdown closes it. Test keyboard navigation with arrow keys changes highlighted item. Test Enter key selects highlighted suggestion."
+          },
+          {
+            "id": 4,
+            "title": "Create QueryInterpretation Component with Color-Coded Entity Chips",
+            "description": "Implement QueryInterpretation component displaying extracted entities as color-coded chips with sequential fade-in animations and proper label formatting.",
+            "dependencies": [],
+            "details": "Create frontend/src/components/QueryInterpretation.tsx accepting entities prop of type ExtractedEntities. Define ENTITY_COLORS mapping object with Tailwind classes: phase (indigo-100/800/200), condition (teal-100/800/200), status (emerald-100/800/200), location (slate-100/800/200), keyword (amber-100/800/200), sponsor (purple-100/800/200), age_group (rose-100/800/200). Build chips array by checking each entity property, formatting location as comma-separated city/state/country, and replacing underscores in status with spaces. Return null if no chips. Render container div with py-4 px-6, bg-gray-50, border-y border-gray-200. Add 'We understood:' prefix span with text-sm text-gray-500 mr-3. Map chips with inline-flex flex-wrap gap-2 container, each chip as span with px-3 py-1 rounded-full text-sm font-medium border, dynamic color class, and animate-fadeIn with staggered animationDelay (i * 100ms). Use font-semibold for label portion.",
+            "status": "pending",
+            "testStrategy": "Test component renders null when no entities present. Test each entity type renders with correct color class. Test location formatting combines city/state/country correctly. Test status underscore replacement works. Test animation delays are staggered correctly (0ms, 100ms, 200ms, etc.)."
+          },
+          {
+            "id": 5,
+            "title": "Build ResultCard Component with Expandable Details and Status Styling",
+            "description": "Create ResultCard component with status-colored left border, serif title styling, expandable summary section, and metadata display for phase/sponsor/enrollment.",
+            "dependencies": [],
+            "details": "Create frontend/src/components/ResultCard.tsx accepting trial (TrialResult) and index props. Define STATUS_COLORS mapping for RECRUITING (green), NOT_YET_RECRUITING (amber), COMPLETED (gray), TERMINATED (red), ACTIVE_NOT_RECRUITING (blue) with bg/text/border variants. Define STATUS_BORDER mapping for left border colors. Add useState for expanded boolean. Render card div with bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 with dynamic borderColor, p-5, hover:shadow-md transition-shadow, cursor-pointer, animate-fadeIn with staggered delay (index * 50ms). Add onClick toggling expanded state. Display flex header with brief_title in font-serif text-lg font-semibold, nct_id in text-xs text-gray-400 font-mono, and status badge with dynamic statusColor. Show metadata row with phase (formatted without 'PHASE' prefix), sponsor (first from array or 'Unknown'), and enrollment with toLocaleString formatting. Conditionally render expanded section with border-t, brief_summaries_description, and facilities list formatted as city/state/country joined by pipes.",
+            "status": "pending",
+            "testStrategy": "Test card renders with correct status border color for each status type. Test clicking card toggles expanded state. Test expanded section shows summary and facilities. Test sponsor falls back to 'Unknown' when empty. Test enrollment number formats with commas. Test animation delay based on index prop."
+          },
+          {
+            "id": 6,
+            "title": "Define TypeScript Types Matching Backend Schemas",
+            "description": "Create frontend/src/types/index.ts with complete TypeScript interfaces for SearchResponse, SuggestionResponse, TrialResult, ExtractedEntities, Sponsor, Facility, and Location matching backend Pydantic models.",
+            "dependencies": [],
+            "details": "Create frontend/src/types/index.ts (or types.ts) with all necessary interfaces. Define Location interface with optional city, state, country string fields. Define ExtractedEntities with optional phase, condition, status, location (Location type), keyword, sponsor, age_group fields. Define Sponsor interface with name string and optional type field. Define Facility interface with optional name, city, state, country fields. Define TrialResult interface with nct_id, brief_title, official_title (optional), brief_summaries_description (optional), overall_status, phase (optional), enrollment (optional number), sponsors (Sponsor array), facilities (Facility array), conditions (string array), and score (optional number). Define SuggestionResponse with suggestions string array. Define SearchResponse with results (TrialResult array), total (number), page (number), page_size (number), total_pages (number), query (string), entities (ExtractedEntities), and optional clarification_needed (string array). Export all types for use across components.",
+            "status": "pending",
+            "testStrategy": "Verify TypeScript compilation succeeds with no type errors. Test that API response types match actual backend responses by making test requests. Ensure all component props correctly use these shared types. Run tsc --noEmit to validate type correctness."
+          },
+          {
+            "id": 7,
+            "title": "Create CSS Animations and Configure Tailwind Theme Extensions",
+            "description": "Add fadeIn and slideDown keyframe animations to frontend/src/index.css and extend Tailwind config with custom animation utilities and theme colors.",
+            "dependencies": [],
+            "details": "Update frontend/src/index.css with @keyframes fadeIn animation from opacity 0 to 1 with transform translateY(8px) to translateY(0) over 0.3s ease-out. Add @keyframes slideDown from opacity 0, transform translateY(-10px) to opacity 1, translateY(0) over 0.2s ease-out. Define utility classes .animate-fadeIn and .animate-slideDown applying the respective animations with animation-fill-mode: both for proper initial state handling. Update tailwind.config.js (or tailwind.config.ts) to extend theme with custom colors: primary (#0D4F4F teal), accent (#D4A843 amber), background (#F8F6F3 cream). Add animation keyframes to Tailwind config for use with animate-* classes. Ensure animations work with prefers-reduced-motion media query by adding @media (prefers-reduced-motion: reduce) rules that disable or reduce animation duration. Add responsive breakpoint considerations ensuring animations don't cause layout shift on mobile devices.",
+            "status": "pending",
+            "testStrategy": "Verify animations play correctly by inspecting elements in browser DevTools. Test fadeIn applies to ResultCard components with visible opacity/transform transition. Test slideDown applies to suggestion dropdown. Verify prefers-reduced-motion is respected. Test Tailwind custom colors are accessible via classes like bg-primary, text-accent."
+          }
+        ]
       },
       {
         "id": 9,
@@ -118,7 +602,71 @@
           8
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Pagination Component with Dynamic Page Number Generation",
+            "description": "Implement the Pagination.tsx component with intelligent page number generation that handles edge cases for first/last pages, ellipsis display for large page counts, and proper disabled states for navigation buttons.",
+            "dependencies": [],
+            "details": "Create `frontend/src/components/Pagination.tsx` with the following features:\n\n1. **Props interface**: Accept `currentPage`, `totalPages`, and `onPageChange` callback\n2. **Early return**: Return null when `totalPages <= 1` (no pagination needed)\n3. **Dynamic page array generation**:\n   - For 5 or fewer pages: show all pages [1, 2, 3, 4, 5]\n   - When currentPage <= 3: show first 5 pages\n   - When currentPage >= totalPages - 2: show last 5 pages\n   - Otherwise: show currentPage centered with 2 pages on each side\n4. **Previous button**: Disabled when `currentPage === 1`, calls `onPageChange(currentPage - 1)`\n5. **Page number buttons**: Highlight current page with teal-700 background and white text, others have gray border with hover state\n6. **Next button**: Disabled when `currentPage === totalPages`, calls `onPageChange(currentPage + 1)`\n7. **Styling**: Use flex layout with gap-2, centered alignment, mt-8 margin top, rounded-lg buttons with transition-colors\n8. **Accessibility**: Ensure buttons have proper disabled states reflected visually (opacity-50)",
+            "status": "pending",
+            "testStrategy": "1. Test with totalPages=1: component should return null\n2. Test with totalPages=5, currentPage=1: should show pages [1,2,3,4,5] with 1 highlighted\n3. Test with totalPages=10, currentPage=1: Previous should be disabled, should show [1,2,3,4,5]\n4. Test with totalPages=10, currentPage=10: Next should be disabled, should show [6,7,8,9,10]\n5. Test with totalPages=20, currentPage=10: should show [8,9,10,11,12]\n6. Verify onPageChange callback fires correctly on button clicks"
+          },
+          {
+            "id": 2,
+            "title": "Build ClarificationBanner with Question Parsing and Selection Handling",
+            "description": "Create the ClarificationBanner.tsx component with amber styling that displays clarification questions, extracts potential options from the question text using regex, and triggers refined searches when users select an option.",
+            "dependencies": [],
+            "details": "Create `frontend/src/components/ClarificationBanner.tsx` with:\n\n1. **Props interface**: Accept `question` string and `onSelection` callback that receives the chosen option\n2. **extractOptions helper function**:\n   - Parse question string for quoted text using regex `/'([^']+)'/g`\n   - Return array of extracted strings with quotes removed\n   - Return empty array if no matches found\n3. **Banner styling**:\n   - Full width with py-4 px-6 padding\n   - Amber color scheme: bg-amber-50, border-y border-amber-200\n   - Add `animate-slideDown` class for entrance animation\n4. **Question display**: Show question text in text-amber-800 font-medium with mb-3 margin\n5. **Option buttons** (only render if options.length > 0):\n   - Wrap in flex container with flex-wrap gap-2\n   - Each button: px-4 py-2, rounded-full, bg-white, border border-amber-300\n   - Text in text-amber-800 with hover:bg-amber-100 transition\n   - onClick calls `onSelection(opt)` with the option text\n6. **Add slideDown animation to tailwind.config.js** if not already present:\n   ```js\n   animation: { slideDown: 'slideDown 0.3s ease-out' },\n   keyframes: { slideDown: { from: { opacity: 0, transform: 'translateY(-10px)' }, to: { opacity: 1, transform: 'translateY(0)' } } }\n   ```",
+            "status": "pending",
+            "testStrategy": "1. Test with question containing quoted options: \"Did you mean 'diabetes' or 'diabetic'?\" should extract ['diabetes', 'diabetic']\n2. Test with question without quotes: should render question but no option buttons\n3. Verify onSelection callback is called with correct option text when button clicked\n4. Verify amber color scheme renders correctly\n5. Test slideDown animation triggers on component mount\n6. Test with multiple options (3+) to verify flex-wrap behavior"
+          },
+          {
+            "id": 3,
+            "title": "Create EmptyState Component with No-Results and Error Variants",
+            "description": "Implement the EmptyState.tsx component with two distinct variants: 'no-results' showing suggested queries and 'error' showing retry functionality, each with appropriate icons, messaging, and interactive elements.",
+            "dependencies": [],
+            "details": "Create `frontend/src/components/EmptyState.tsx` with:\n\n1. **Props interface**: `type: 'no-results' | 'error'`, optional `message`, optional `onRetry` callback, optional `onSuggestionClick` callback\n2. **SUGGESTED_QUERIES constant**: Array of example searches like [\"Phase 3 cancer trials\", \"Recruiting diabetes studies\", \"COVID-19 vaccine trials\"]\n3. **Container styling**: Centered flex column with py-16 px-4\n4. **Icon container**: 24x24 (w-24 h-24) rounded-full bg-gray-100 with centered icon\n   - 'no-results': Search magnifying glass SVG in text-gray-400\n   - 'error': Warning triangle SVG in text-red-400\n5. **Heading**: font-serif text-2xl text-gray-700 mb-2\n   - 'no-results': \"No trials found\"\n   - 'error': \"Something went wrong\"\n6. **Description**: text-gray-500 centered max-w-md mb-6, use message prop or default text\n7. **Error retry button** (only for type='error' when onRetry provided):\n   - px-6 py-2, bg-teal-700 text-white, rounded-lg, hover:bg-teal-800 transition, mb-6\n8. **Suggested queries** (only for type='no-results' when onSuggestionClick provided):\n   - \"Try one of these searches:\" label in text-sm text-gray-500 mb-3\n   - Flex-wrap container with gap-2 and justify-center\n   - Each suggestion: px-4 py-2, rounded-full, border border-teal-300, text-teal-700, hover:bg-teal-50, text-sm",
+            "status": "pending",
+            "testStrategy": "1. Test 'no-results' variant renders search icon, correct heading, and suggestions\n2. Test 'error' variant renders warning icon, correct heading, and retry button\n3. Test onRetry callback fires when retry button clicked\n4. Test onSuggestionClick callback fires with query text when suggestion clicked\n5. Test custom message prop overrides default text\n6. Test retry button only renders when onRetry is provided\n7. Test suggestions only render when onSuggestionClick is provided"
+          },
+          {
+            "id": 4,
+            "title": "Implement ResultsList Component with Staggered Animations",
+            "description": "Create the ResultsList.tsx component that composes multiple ResultCard components with staggered entrance animations, displays result count information, and integrates the Pagination component for navigation.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create `frontend/src/components/ResultsList.tsx` with:\n\n1. **Imports**: Import TrialResult type, ResultCard component, and Pagination component\n2. **Props interface**: `results: TrialResult[]`, `total: number`, `page: number`, `pageSize: number`, `onPageChange: (page: number) => void`\n3. **Calculate totalPages**: `Math.ceil(total / pageSize)`\n4. **Container**: `w-full max-w-4xl mx-auto`\n5. **Result count display**: \n   - `<p className=\"text-sm text-gray-500 mb-4\">`\n   - Text: \"Showing {results.length} of {total.toLocaleString()} trials\"\n6. **Results container**: `<div className=\"space-y-4\">`\n7. **Map ResultCards**: Pass `trial` and `index` to each ResultCard\n   - The index is used by ResultCard for staggered animation delay\n   - Key should be `trial.nct_id`\n8. **Pagination component**: Pass currentPage={page}, totalPages, onPageChange\n9. **Staggered animation in ResultCard** (verify/update ResultCard.tsx):\n   - Add animation delay based on index: `style={{ animationDelay: `${index * 100}ms` }}`\n   - Add CSS class `animate-fadeInUp` with animation-fill-mode: both\n10. **Add fadeInUp animation to tailwind config** if needed:\n    ```js\n    animation: { fadeInUp: 'fadeInUp 0.4s ease-out' },\n    keyframes: { fadeInUp: { from: { opacity: 0, transform: 'translateY(20px)' }, to: { opacity: 1, transform: 'translateY(0)' } } }\n    ```",
+            "status": "pending",
+            "testStrategy": "1. Test ResultsList renders correct number of ResultCard components\n2. Test result count shows correct \"Showing X of Y trials\" text with proper formatting\n3. Test staggered animation - first card animates immediately, second after 100ms, etc.\n4. Test Pagination receives correct props (currentPage, totalPages)\n5. Test onPageChange callback propagates to Pagination correctly\n6. Test with empty results array - should render empty container with Pagination\n7. Test with large total (1000+) formats with toLocaleString()"
+          },
+          {
+            "id": 5,
+            "title": "Build App.tsx with Complete State Machine and Search Handler",
+            "description": "Implement the main App.tsx component with a complete state machine managing idle, loading, results, no-results, and error states, including search functionality with pagination support, clarification handling, and smooth scroll behavior.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Update `frontend/src/App.tsx` with complete state management:\n\n1. **Imports**: useState, useCallback from React; all components (SearchBar, QueryInterpretation, ResultsList, ClarificationBanner, EmptyState); searchTrials from api service; SearchResponse type\n2. **AppState type**: `'idle' | 'loading' | 'results' | 'no-results' | 'error'`\n3. **State variables**:\n   - `state: AppState` initialized to 'idle'\n   - `response: SearchResponse | null` initialized to null\n   - `currentQuery: string` initialized to ''\n   - `error: string | null` initialized to null\n4. **handleSearch callback** (memoized with useCallback):\n   - Accept query string and optional page (default 1)\n   - Set currentQuery, setState to 'loading', clear error\n   - Try/catch block: call searchTrials, setResponse, setState based on results.length\n   - Catch: setError with message, setState to 'error'\n5. **handlePageChange callback**: Call handleSearch with currentQuery and page, then `window.scrollTo({ top: 0, behavior: 'smooth' })`\n6. **handleClarification callback**: Call handleSearch with `${currentQuery} ${choice}`\n7. **JSX structure**:\n   - Root: `min-h-screen bg-[#F8F6F3]`\n   - Header: Dynamic padding `py-32` for idle, `py-8` otherwise, with transition-all duration-300\n   - Conditionally render hero text only in idle state\n   - SearchBar always visible, pass isLoading prop\n   - QueryInterpretation when response exists and not idle\n   - ClarificationBanner when response?.clarification exists\n   - Main content: loading skeletons, ResultsList, or EmptyState based on state",
+            "status": "pending",
+            "testStrategy": "1. Test initial state is 'idle' with hero text and expanded header\n2. Test search transitions: idle -> loading -> results (with data) or no-results (empty)\n3. Test error state: simulate API failure, verify error message displays\n4. Test header transition: verify py-32 becomes py-8 on search\n5. Test pagination: verify handlePageChange updates results and scrolls to top\n6. Test clarification: verify handleClarification appends choice to query\n7. Test retry from error state returns to loading then appropriate state\n8. Test suggestion click from EmptyState triggers new search"
+          },
+          {
+            "id": 6,
+            "title": "Add Skeleton Loading States with Shimmer Animation and Header Transition",
+            "description": "Implement skeleton loading placeholders with shimmer animation effect during API calls, and ensure the header transition from hero (idle) to compact (active) state animates smoothly with proper CSS transitions.",
+            "dependencies": [
+              5
+            ],
+            "details": "Enhance loading states and header transitions in App.tsx and CSS:\n\n1. **Loading skeletons in App.tsx main content**:\n   - When state === 'loading', render 3 skeleton cards\n   - Each skeleton: `h-32 bg-white rounded-lg animate-pulse`\n   - Wrap in `max-w-4xl mx-auto space-y-4`\n\n2. **Enhanced shimmer animation** (update tailwind.config.js or index.css):\n   ```css\n   @keyframes shimmer {\n     0% { background-position: -200% 0; }\n     100% { background-position: 200% 0; }\n   }\n   .animate-shimmer {\n     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);\n     background-size: 200% 100%;\n     animation: shimmer 1.5s infinite;\n   }\n   ```\n\n3. **Optional: Create SkeletonCard component** for reusability:\n   ```tsx\n   export function SkeletonCard() {\n     return (\n       <div className=\"bg-white rounded-lg p-6 animate-shimmer\">\n         <div className=\"h-4 bg-gray-200 rounded w-3/4 mb-4\" />\n         <div className=\"h-3 bg-gray-200 rounded w-1/2 mb-2\" />\n         <div className=\"h-3 bg-gray-200 rounded w-full\" />\n       </div>\n     );\n   }\n   ```\n\n4. **Header transition refinement**:\n   - Ensure `transition-all duration-300` on header element\n   - Hero content (h1, p) should fade out: add `transition-opacity duration-300` and conditional opacity-0\n   - Consider using `overflow-hidden` with dynamic max-height for smoother collapse\n\n5. **SearchBar position transition**:\n   - Ensure SearchBar smoothly moves from centered (hero) to top position\n   - Use transform or layout animations as needed\n\n6. **Add all required keyframe animations to tailwind.config.js**:\n   - slideDown (for ClarificationBanner)\n   - fadeInUp (for ResultCards)\n   - shimmer (for loading skeletons)",
+            "status": "pending",
+            "testStrategy": "1. Test loading state displays 3 skeleton cards with shimmer animation\n2. Test shimmer animation runs continuously (infinite loop)\n3. Test header transition timing - should take 300ms to collapse\n4. Test hero text fades out when transitioning from idle state\n5. Test SearchBar position animates smoothly from center to top\n6. Verify no layout shift or jumpy behavior during state transitions\n7. Test rapid state changes (quick searches) don't cause animation glitches\n8. Verify all animations defined in tailwind.config.js compile correctly"
+          }
+        ]
       },
       {
         "id": 10,
@@ -131,7 +679,78 @@
           9
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Complete index.css with Google Fonts and Custom Animations",
+            "description": "Create the complete frontend/src/index.css file with Google Fonts imports (Fraunces serif for headings, Outfit sans-serif for body), CSS custom properties for theme colors (teal primary #0D4F4F, amber accent #D4A843, warm gray background #F8F6F3), keyframe animations (fadeIn, slideDown, shimmer), custom scrollbar styling, and focus states with amber glow.",
+            "dependencies": [],
+            "details": "1. Add Google Fonts import for Fraunces (opsz,wght@9..144,400;600;700) and Outfit (wght@400;500;600) with display=swap for performance\n2. Configure Tailwind CSS import directive\n3. Define CSS custom properties in :root - --color-primary: #0D4F4F, --color-accent: #D4A843, --color-bg: #F8F6F3\n4. Set body font-family to Outfit with background-color using var(--color-bg)\n5. Create .font-serif class using Fraunces for editorial headings\n6. Implement @keyframes fadeIn animation (opacity 0→1, translateY 8px→0, duration 0.3s ease-out)\n7. Implement @keyframes slideDown animation (opacity 0→1, translateY -10px→0, duration 0.2s ease-out)\n8. Implement @keyframes shimmer animation for loading states (background-position -200%→200%, duration 1.5s infinite)\n9. Create utility classes: .animate-fadeIn, .animate-slideDown, .animate-pulse (using shimmer)\n10. Style input:focus with amber box-shadow (0 0 0 4px rgba(212, 168, 67, 0.2))\n11. Add webkit scrollbar styling (8px width, #f1f1f1 track, #c1c1c1 thumb with 4px border-radius)",
+            "status": "pending",
+            "testStrategy": "Verify Google Fonts load correctly by inspecting network requests for fonts.googleapis.com. Test animations by adding test classes to elements and confirming smooth transitions. Check custom scrollbar appears in webkit browsers. Validate focus states trigger on input focus. Use Chrome DevTools to verify CSS custom properties are applied correctly."
+          },
+          {
+            "id": 2,
+            "title": "Configure tailwind.config.ts with Extended Theme and Custom Fonts",
+            "description": "Update frontend/tailwind.config.ts with extended color palette including custom teal shades (50-900 with 700 as primary #0D4F4F), amber accent colors (400 #D4A843, 500 #c99a3a), custom font families (Fraunces for serif, Outfit for sans-serif), and ensure content paths include all source files.",
+            "dependencies": [
+              1
+            ],
+            "details": "1. Import Config type from tailwindcss for TypeScript support\n2. Configure content array to include './index.html' and './src/**/*.{js,ts,jsx,tsx}'\n3. Extend theme.colors.teal with full palette: 50 #f0fdfa, 100 #ccfbf1, 200 #99f6e4, 300 #5eead4, 400 #2dd4bf, 500 #14b8a6, 600 #0d9488, 700 #0D4F4F (primary), 800 #0A3D3D, 900 #082f2f\n4. Extend theme.colors.amber with accent shades: 400 #D4A843, 500 #c99a3a\n5. Configure fontFamily.serif as ['Fraunces', 'serif'] for editorial headings\n6. Configure fontFamily.sans as ['Outfit', 'sans-serif'] for body/UI text\n7. Export configuration using 'satisfies Config' for type safety\n8. Verify plugins array is empty (no external dependencies needed)",
+            "status": "pending",
+            "testStrategy": "Run Tailwind build and verify no configuration errors. Test that teal-700 class applies #0D4F4F correctly. Verify font-serif and font-sans classes apply correct font families. Use browser DevTools to inspect computed styles and confirm extended colors are available."
+          },
+          {
+            "id": 3,
+            "title": "Update index.html with Meta Tags and Font Preconnect Links",
+            "description": "Update frontend/index.html with proper HTML5 doctype, language attribute, essential meta tags (charset UTF-8, viewport for responsive design, description for SEO), and font preconnect links to fonts.googleapis.com and fonts.gstatic.com for optimal font loading performance.",
+            "dependencies": [],
+            "details": "1. Ensure DOCTYPE html is present at the top\n2. Add lang=\"en\" attribute to html element\n3. Add meta charset=\"UTF-8\" in head section\n4. Add meta viewport with 'width=device-width, initial-scale=1.0' for responsive design\n5. Add meta description: 'Search clinical trials using natural language'\n6. Set page title to 'Clinical Trials Search'\n7. Add preconnect link for 'https://fonts.googleapis.com' to establish early connection\n8. Add preconnect link for 'https://fonts.gstatic.com' with crossorigin attribute for font files\n9. Ensure div#root is present in body for React mounting\n10. Verify script tag loads '/src/main.tsx' with type=\"module\"",
+            "status": "pending",
+            "testStrategy": "Validate HTML using W3C validator. Check network waterfall in DevTools to confirm preconnect reduces font loading time. Verify meta viewport enables proper mobile scaling. Test that description appears in browser tab preview and search engine results simulation."
+          },
+          {
+            "id": 4,
+            "title": "Execute End-to-End Test Scenarios for Query Processing",
+            "description": "Execute comprehensive end-to-end test scenarios covering multi-entity queries, synonym mapping, clarification triggers, empty/gibberish input handling, and pagination. Document results for each test case including expected vs actual behavior.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Test Case 1: 'Phase 3 lung cancer trials in the USA' - Verify phase=PHASE3, condition=lung cancer, location.country=United States are extracted and results contain Phase 3 lung cancer trials in US\nTest Case 2: 'recruiting diabetes trials near Boston' - Verify status=RECRUITING, condition=diabetes, location.city=Boston and all results show RECRUITING status\nTest Case 3: 'List all Phase 2 trials for Breast Cancer associated with BRCA1 gene' - Verify phase=PHASE2, condition=Breast Cancer, keyword=BRCA1 and results mention BRCA1\nTest Case 4: 'open melanoma trials' - Test synonym mapping 'open'->RECRUITING, verify status=RECRUITING for melanoma trials\nTest Case 5: 'cancer' - Test broad query handling, check if low confidence triggers clarification banner or returns broad results gracefully\nTest Case 6: '' (empty query) - Verify graceful error handling without crash, appropriate error message displayed\nTest Case 7: 'asdfghjkl' (gibberish) - Verify empty state with suggestions is displayed\nTest Case 8: Pagination - Submit broad query, navigate between pages, verify results update correctly and page indicators are accurate\nDocument all results with screenshots if applicable",
+            "status": "pending",
+            "testStrategy": "Execute each test case manually in the browser. Record the query interpretation displayed in the UI and compare with expected entity extraction. Verify result cards match search criteria. Check browser console for JavaScript errors during each test. Document pass/fail status for each scenario."
+          },
+          {
+            "id": 5,
+            "title": "Test Responsive Design at Key Breakpoints and Fix Layout Issues",
+            "description": "Test responsive design at critical breakpoints (320px mobile, 768px tablet, 1024px laptop, 1440px desktop) across all components. Identify and fix any layout issues including overflow, text truncation, spacing problems, and component stacking on narrow viewports.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "1. Test at 320px (small mobile): Verify search bar is full-width with adequate padding, result cards stack vertically, entity chips wrap properly, pagination controls remain accessible, no horizontal scrolling occurs, fonts remain readable at minimum sizes\n2. Test at 768px (tablet): Verify search section has appropriate margins, result cards may be 2-column if designed, query interpretation strip scales properly, clarification banner adapts to width\n3. Test at 1024px (laptop): Verify content is centered with max-width container, proper spacing between search/interpretation/results sections, hover states work correctly\n4. Test at 1440px (desktop): Verify layout uses available space without excessive stretching, typography hierarchy is maintained, generous whitespace as per PRD spec\n5. Fix any identified issues: Update Tailwind responsive classes (sm:, md:, lg:, xl:), adjust grid/flex layouts, ensure touch targets are minimum 44px on mobile, verify images/icons scale appropriately",
+            "status": "pending",
+            "testStrategy": "Use Chrome DevTools device emulation to test each breakpoint. Test on actual mobile devices if available. Use responsive design mode in Firefox for cross-validation. Check that all interactive elements are accessible at each breakpoint. Verify no content is cut off or overlapping."
+          },
+          {
+            "id": 6,
+            "title": "Performance Optimization and Animation Quality Verification",
+            "description": "Verify and optimize performance characteristics including debounce timing (300ms for search input), skeleton loading immediate display, animation smoothness without layout shift, and network waterfall efficiency. Conduct Lighthouse audits and address any performance issues.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "1. Verify debounce timing: Type in search bar and confirm suggestions API is called after 300ms pause, not on every keystroke. Test that typing continuously does not trigger multiple API calls\n2. Test skeleton loading: Submit search query and verify skeleton cards with shimmer animation appear immediately (within 100ms) before results load\n3. Check layout shift: Use Chrome DevTools Performance panel to record search flow, verify CLS (Cumulative Layout Shift) score is below 0.1, ensure animations don't cause content to jump\n4. Verify animation performance: Check that fadeIn, slideDown, and shimmer animations run at 60fps using DevTools Performance monitor, no jank during card reveal animations\n5. Network waterfall analysis: Check that fonts are loaded with preconnect optimization, API calls are not duplicated, responses are appropriately sized\n6. Run Lighthouse audit: Target Performance score >90, Accessibility score >90, Best Practices >90. Address any flagged issues\n7. Verify staggered card animation doesn't cause visible performance degradation with 10+ results",
+            "status": "pending",
+            "testStrategy": "Use Chrome DevTools Performance panel to profile search interactions. Run Lighthouse in incognito mode for accurate scores. Test on throttled 3G network to verify skeleton loading behavior. Use requestAnimationFrame timing to verify animation performance. Document any CLS issues with before/after screenshots."
+          }
+        ]
       }
     ],
     "metadata": {
