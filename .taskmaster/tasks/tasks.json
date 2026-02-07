@@ -1002,7 +1002,62 @@
           9
         ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Filter Types and State Management Module",
+            "description": "Create a new TypeScript module for filter state types, initial state, and bidirectional conversion functions between FilterState and ExtractedEntities.",
+            "dependencies": [],
+            "details": "Create `frontend/src/types/filters.ts` with:\n\n1. Define `FilterState` interface with typed fields: phase (PhaseValue | null), status (StatusValue | null), condition (string), location (LocationFilter), sponsor (string), keyword (string), ageGroups (AgeCategoryValue[]), enrollmentMin (number | null), enrollmentMax (number | null).\n\n2. Export `INITIAL_FILTER_STATE` constant with all fields initialized to null, empty strings, or empty arrays.\n\n3. Implement `filtersToEntities(filters: FilterState): Partial<ExtractedEntities>` function that converts FilterState to ExtractedEntities format for API calls, handling null-to-undefined conversion.\n\n4. Implement `entitiesToFilters(entities: ExtractedEntities): FilterState` function for reverse conversion from query interpretation to filter panel state, enabling bidirectional sync.\n\nImport types from existing `./index.ts` (PhaseValue, StatusValue, AgeCategoryValue, ExtractedEntities, LocationFilter).",
+            "status": "pending",
+            "testStrategy": "Unit test both conversion functions with various combinations of filter values including: all fields populated, partial fields, empty state, edge cases like enrollment range with only min or max. Verify round-trip consistency (filters -> entities -> filters)."
+          },
+          {
+            "id": 2,
+            "title": "Build FilterPanel Component with All 9 Filter Controls",
+            "description": "Create the main FilterPanel React component with collapsible sidebar layout containing all 9 filter type controls matching the existing design system.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create `frontend/src/components/FilterPanel.tsx` with:\n\n1. Component props: filters (FilterState), onFiltersChange, onApply, onClear, isCollapsed, onToggleCollapse.\n\n2. Implement collapsible sidebar with smooth width transition (w-12 collapsed, w-80 expanded) using CSS transitions.\n\n3. Build filter controls:\n   - Phase: dropdown using PHASE_VALUES from types/index.ts\n   - Status: dropdown using STATUS_VALUES with underscores replaced by spaces in display\n   - Condition: text input (later enhanced with autocomplete)\n   - Location: three text inputs for city, state, country\n   - Sponsor: text input (later enhanced with autocomplete)\n   - Keyword: text input for genes/drugs/terms\n   - Age Groups: checkbox group using AGE_CATEGORIES\n   - Enrollment Range: two number inputs for min/max\n\n4. Add Apply Filters button (accent color) and Clear button (gray, disabled when no active filters).\n\n5. Implement hasActiveFilters computed value to enable/disable clear button.\n\n6. Style all inputs to match existing SearchBar.tsx patterns and index.css color variables.",
+            "status": "pending",
+            "testStrategy": "Test component renders all 9 filter controls. Test each control updates filter state correctly via onFiltersChange. Test collapse/expand toggle works. Test Apply and Clear buttons trigger callbacks. Test hasActiveFilters logic enables/disables Clear button correctly."
+          },
+          {
+            "id": 3,
+            "title": "Create AutocompleteInput Component for Condition and Sponsor Fields",
+            "description": "Build a reusable autocomplete input component with debounced suggestions using the existing /api/suggest endpoint for condition and sponsor fields.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create `frontend/src/components/AutocompleteInput.tsx` with:\n\n1. Component props: label, value, onChange, placeholder, suggestionType (optional, for future field-specific suggestions).\n\n2. Implement debounced suggestion fetching (300ms) using existing getSuggestions() from services/api.ts.\n\n3. Render input with dropdown suggestion list, styled to match SearchBar.tsx suggestion dropdown (same classes for consistency).\n\n4. Handle keyboard navigation (ArrowUp/Down to navigate, Enter to select, Escape to close).\n\n5. Implement click-outside to close suggestions using useRef and useEffect pattern from SearchBar.tsx.\n\n6. Update FilterPanel to use AutocompleteInput for condition and sponsor fields instead of plain text inputs.\n\n7. Add loading indicator while fetching suggestions.\n\n8. Ensure suggestions dropdown doesn't overflow panel bounds (use absolute positioning with proper z-index).",
+            "status": "pending",
+            "testStrategy": "Test debounce delays API calls by 300ms. Test suggestions appear after typing 2+ characters. Test keyboard navigation cycles through suggestions. Test clicking outside closes dropdown. Test selecting a suggestion updates parent value and closes dropdown."
+          },
+          {
+            "id": 4,
+            "title": "Add Backend /api/filter Endpoint for Direct Filter Queries",
+            "description": "Implement a new FastAPI endpoint that accepts explicit filter parameters directly without requiring natural language processing.",
+            "dependencies": [],
+            "details": "Add to `backend/app/routers/search.py`:\n\n1. Create new route @router.get(\"/filter\", response_model=SearchResponse) with query parameters:\n   - page: int (default=1, ge=1)\n   - page_size: int (default=10, ge=1, le=100)\n   - phase: Optional[str]\n   - status: Optional[str]\n   - condition: Optional[str]\n   - location: Optional[str] (JSON string)\n   - sponsor: Optional[str]\n   - keyword: Optional[str]\n   - age_group: Optional[str]\n   - enrollment_min: Optional[int]\n   - enrollment_max: Optional[int]\n\n2. Parse location JSON string to LocationFilter model.\n\n3. Construct ExtractedEntities with confidence=1.0 (manual filters have full confidence).\n\n4. Use existing es_service.search() to execute query.\n\n5. Return SearchResponse with query_interpretation showing applied filters.\n\n6. Add searchWithFilters() function to `frontend/src/services/api.ts` that calls this endpoint with proper parameter serialization.",
+            "status": "pending",
+            "testStrategy": "Test endpoint with curl: single filter, multiple filters, location JSON, enrollment range. Verify response matches SearchResponse schema. Test pagination. Test invalid parameters return appropriate errors. Integration test from frontend API service."
+          },
+          {
+            "id": 5,
+            "title": "Integrate FilterPanel into App Layout with Bidirectional Sync",
+            "description": "Update App.tsx to include FilterPanel in a sidebar layout, manage filter state, enable bidirectional sync with QueryInterpretation chips, and wire up filter-based search.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Update `frontend/src/App.tsx`:\n\n1. Add filter state: const [filters, setFilters] = useState<FilterState>(INITIAL_FILTER_STATE), const [isFilterPanelCollapsed, setIsFilterPanelCollapsed] = useState(false).\n\n2. Change layout to flex container with FilterPanel sidebar and main content area.\n\n3. Implement handleApplyFilters() that calls searchWithFilters() API and updates response state.\n\n4. Add useEffect to sync filters from response.query_interpretation using entitiesToFilters() when NL search returns.\n\n5. Update QueryInterpretation.tsx to accept optional onChipRemove callback prop. When chip is clicked, call onChipRemove(type) to clear that filter and trigger new search.\n\n6. Pass onChipRemove handler from App that updates filter state and triggers filter search.\n\n7. Handle Clear button to reset to INITIAL_FILTER_STATE and clear results.\n\n8. Add filter count badge to collapsed sidebar showing number of active filters.\n\n9. Ensure mobile responsiveness with slide-out drawer pattern (hidden by default on small screens with hamburger toggle).",
+            "status": "pending",
+            "testStrategy": "Test filter panel appears in layout alongside results. Test applying filters triggers filter search API. Test NL search updates filter panel state. Test clicking QueryInterpretation chip removes that filter and re-searches. Test clear resets all filters. Test filter count badge updates correctly. Test mobile responsive behavior."
+          }
+        ]
       }
     ],
     "metadata": {
