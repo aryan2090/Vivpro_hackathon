@@ -540,7 +540,7 @@
           "5",
           "6"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -548,9 +548,10 @@
             "description": "Implement the main FastAPI application entry point with proper app initialization, CORS middleware configured for Vite dev server origins, and global exception handler for consistent error responses.",
             "dependencies": [],
             "details": "Create `backend/app/main.py` with FastAPI app instance configured with title='Clinical Trials Search API', description, and version. Add CORSMiddleware with allow_origins for localhost:5173, localhost:3000, and 127.0.0.1:5173. Set allow_credentials=True, allow_methods=['*'], allow_headers=['*']. Implement global exception handler using @app.exception_handler(Exception) that returns JSONResponse with status_code=500 and structured error content including 'error' and 'detail' fields. Add uvicorn runner in __main__ block with host='0.0.0.0' and port=8000. Import get_settings from config for environment-based configuration.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test CORS headers by making requests from different origins using curl with -H 'Origin: http://localhost:5173'. Verify Access-Control-Allow-Origin header in response. Test global exception handler by triggering an error and verifying JSON error response format with correct status code.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:09:47.133Z"
           },
           {
             "id": 2,
@@ -560,9 +561,10 @@
               1
             ],
             "details": "Create `backend/app/routers/search.py` with APIRouter configured with prefix='/api' and tags=['search']. Define the search_trials endpoint at GET '/search/{query}' with path parameter query (str) and Query parameters: page (int, default=1, ge=1) and page_size (int, default=10, ge=1, le=100). Set response_model=SearchResponse. Add proper docstring explaining the endpoint purpose. Import required dependencies: APIRouter, Query, HTTPException from fastapi, and the service modules (llm_service, es_service) and schema models (SearchResponse). Include the router in main.py using app.include_router(search.router).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test endpoint with curl: GET /api/search/cancer?page=1&page_size=10. Verify pagination validation by testing page=0 (should fail), page_size=101 (should fail), and valid values. Check OpenAPI schema at /docs shows correct parameter constraints.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:09:47.369Z"
           },
           {
             "id": 3,
@@ -572,9 +574,10 @@
               2
             ],
             "details": "Inside the search_trials endpoint function: 1) Call await extract_entities(query) from llm_service to get ExtractedEntities object, 2) Pass entities to await es_service.search(entities, page, page_size) which returns (results, total) tuple, 3) Construct and return SearchResponse with query_interpretation=entities, results=results, total=total, page=page, page_size=page_size, clarification=entities.clarification. Wrap entire logic in try/except block, catching Exception and raising HTTPException(status_code=500, detail=str(e)). Add logging using Python logging module to log incoming queries and any errors for debugging purposes.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test full pipeline with curl: GET /api/search/Phase%203%20lung%20cancer. Verify response contains query_interpretation with extracted entities, results array, total count, and pagination info. Test error handling by mocking service failures and verifying 500 response with error details.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:09:47.593Z"
           },
           {
             "id": 4,
@@ -584,9 +587,10 @@
               1
             ],
             "details": "Add get_suggestions endpoint to search.py router at GET '/suggest' with response_model=SuggestionResponse. Accept query parameter q using Query(..., min_length=2, description='Partial query text') where ... makes it required. Call await suggestion_service.get_suggestions(q) to fetch suggestions. Return SuggestionResponse(suggestions=suggestions). Implement try/except block with HTTPException(status_code=500, detail=str(e)) for error handling. Import suggestion_service from services and SuggestionResponse from schemas. Add logging for suggestion requests.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with curl: GET /api/suggest?q=can and verify suggestions returned. Test min_length validation with q=a (should fail with 422). Test empty query parameter (should fail). Verify response time is acceptable for type-ahead UX (<100ms target).",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:09:47.836Z"
           },
           {
             "id": 5,
@@ -596,14 +600,16 @@
               1
             ],
             "details": "Add health_check endpoint at GET '/health' in main.py that returns {'status': 'healthy'}. This endpoint should be simple and not include complex logic to ensure reliable health checking. Enhance FastAPI app initialization with additional OpenAPI metadata: contact info, license, terms_of_service if applicable. Add response examples to endpoints using response_model_examples or OpenAPI extra schema. Verify /docs (Swagger UI) and /redoc endpoints are accessible and display correct API documentation. Add tags_metadata to describe the 'search' tag. Consider adding a /ready endpoint that checks ES connectivity for Kubernetes-style readiness probes.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify health endpoint: curl http://localhost:8000/health returns {\"status\": \"healthy\"}. Access /docs in browser and verify Swagger UI loads with correct API title, description, and version. Test all endpoints appear with proper documentation including parameters, response schemas, and examples.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:09:48.058Z"
           }
         ],
         "complexity": 5,
         "recommendedSubtasks": 5,
-        "expansionPrompt": "Break down FastAPI endpoints into: 1) Create main.py with FastAPI app initialization, CORS middleware configuration for Vite dev server origins, and global exception handler, 2) Create search.py router with /api/search/{query} endpoint accepting pagination params (page, page_size with validation), 3) Implement search endpoint logic: call extract_entities -> build_query -> search -> return SearchResponse, 4) Add /api/suggest endpoint with query param validation (min_length=2) calling suggestion_service, 5) Add health check endpoint and OpenAPI documentation configuration. Each subtask should include proper error handling and logging."
+        "expansionPrompt": "Break down FastAPI endpoints into: 1) Create main.py with FastAPI app initialization, CORS middleware configuration for Vite dev server origins, and global exception handler, 2) Create search.py router with /api/search/{query} endpoint accepting pagination params (page, page_size with validation), 3) Implement search endpoint logic: call extract_entities -> build_query -> search -> return SearchResponse, 4) Add /api/suggest endpoint with query param validation (min_length=2) calling suggestion_service, 5) Add health check endpoint and OpenAPI documentation configuration. Each subtask should include proper error handling and logging.",
+        "updatedAt": "2026-02-07T19:09:48.058Z"
       },
       {
         "id": "8",
@@ -883,9 +889,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-07T19:01:00.953Z",
+      "lastModified": "2026-02-07T19:09:48.058Z",
       "taskCount": 10,
-      "completedCount": 6,
+      "completedCount": 7,
       "tags": [
         "master"
       ]
