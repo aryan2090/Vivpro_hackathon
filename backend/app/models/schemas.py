@@ -52,6 +52,11 @@ class SearchResponse(BaseModel):
     page: int = Field(..., ge=1)
     page_size: int = Field(..., ge=1)
     clarification: Optional[str] = None
+    summary: Optional[str] = None
+
+
+class SummaryResponse(BaseModel):
+    summary: Optional[str] = None
 
 
 class SuggestionResponse(BaseModel):

@@ -1,10 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import SearchBar from './components/SearchBar';
 import QueryInterpretation from './components/QueryInterpretation';
 import ResultsList from './components/ResultsList';
+import type { ResultsListHandle } from './components/ResultsList';
+import AISummary from './components/AISummary';
 import ClarificationBanner from './components/ClarificationBanner';
 import EmptyState from './components/EmptyState';
-import { searchTrials } from './services/api';
+import { searchTrials, fetchSummary } from './services/api';
 import type { SearchResponse } from './types';
 
 type AppState = 'idle' | 'loading' | 'results' | 'no-results' | 'error';
@@ -14,15 +16,28 @@ export default function App() {
   const [response, setResponse] = useState<SearchResponse | null>(null);
   const [currentQuery, setCurrentQuery] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+  const resultsListRef = useRef<ResultsListHandle>(null);
+
+  const handleCitationClick = useCallback((index: number) => {
+    resultsListRef.current?.scrollToResult(index);
+  }, []);
 
   const handleSearch = useCallback(async (query: string, page: number = 1) => {
     setCurrentQuery(query);
     setAppState('loading');
     setErrorMessage(null);
+    setSummary(null);
     try {
       const data = await searchTrials(query, page);
       setResponse(data);
       setAppState(data.results.length > 0 ? 'results' : 'no-results');
+
+      if (page === 1 && data.results.length > 0) {
+        fetchSummary(query).then((s) => {
+          setSummary(s);
+        });
+      }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'An error occurred');
       setAppState('error');
@@ -91,13 +106,22 @@ export default function App() {
         )}
 
         {appState === 'results' && response && (
-          <ResultsList
-            results={response.results}
-            total={response.total}
-            page={response.page}
-            pageSize={response.page_size}
-            onPageChange={handlePageChange}
-          />
+          <>
+            {summary && response.page === 1 && (
+              <AISummary
+                summary={summary}
+                onCitationClick={handleCitationClick}
+              />
+            )}
+            <ResultsList
+              ref={resultsListRef}
+              results={response.results}
+              total={response.total}
+              page={response.page}
+              pageSize={response.page_size}
+              onPageChange={handlePageChange}
+            />
+          </>
         )}
 
         {appState === 'no-results' && <EmptyState type="no-results" onSuggestionClick={handleSearch} />}

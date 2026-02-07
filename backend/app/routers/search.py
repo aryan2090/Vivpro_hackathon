@@ -4,10 +4,11 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Query
 
-from ..models.schemas import SearchResponse, SuggestionResponse
+from ..models.schemas import SearchResponse, SuggestionResponse, SummaryResponse
 from ..services.es_service import es_service
 from ..services.llm_service import extract_entities
 from ..services.suggestion import suggestion_service
+from ..services.summary_service import generate_summary
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,19 @@ async def search_trials(
     except Exception as exc:
         logger.error("Search failed for query '%s': %s", query, exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/summary/{query}", response_model=SummaryResponse)
+async def get_summary(query: str) -> SummaryResponse:
+    """Generate an AI summary for a search query's results."""
+    try:
+        entities = await extract_entities(query)
+        results, _ = await es_service.search(entities, page=1, page_size=10)
+        summary = await generate_summary(results, query) if results else None
+        return SummaryResponse(summary=summary)
+    except Exception as exc:
+        logger.error("Summary failed for query '%s': %s", query, exc, exc_info=True)
+        return SummaryResponse(summary=None)
 
 
 @router.get("/suggest", response_model=SuggestionResponse)

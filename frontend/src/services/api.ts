@@ -16,6 +16,19 @@ export async function searchTrials(
   return response.json();
 }
 
+export async function fetchSummary(query: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `${API_BASE}/summary/${encodeURIComponent(query)}`
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.summary ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getSuggestions(prefix: string): Promise<string[]> {
   if (prefix.length < 2) return [];
   const response = await fetch(

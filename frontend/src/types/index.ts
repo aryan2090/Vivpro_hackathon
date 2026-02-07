@@ -63,6 +63,7 @@ export interface SearchResponse {
   page: number;
   page_size: number;
   clarification?: string;
+  summary?: string;
 }
 
 export interface SuggestionResponse {
