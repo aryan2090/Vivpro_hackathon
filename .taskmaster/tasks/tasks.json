@@ -469,7 +469,7 @@
         "dependencies": [
           "3"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -477,9 +477,10 @@
             "description": "Set up the base SuggestionService class with Elasticsearch connection, index configuration, and core initialization logic including settings integration.",
             "dependencies": [],
             "details": "Create `backend/app/services/suggestion.py` with the SuggestionService class. Initialize Elasticsearch client using settings from get_settings() (es_url and es_index). Include proper imports for elasticsearch, typing (List), and config module. Set up the singleton instance pattern with `suggestion_service = SuggestionService()`. Ensure the class follows the same patterns established in other services (es_service.py). Add minimum prefix length constant (MIN_PREFIX_LENGTH = 2) and default limit constant (DEFAULT_LIMIT = 10) for performance optimization.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify module imports correctly without errors. Test that SuggestionService initializes with valid Elasticsearch connection. Confirm settings are properly loaded from config. Test that the singleton instance is accessible from other modules.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:01:00.936Z"
           },
           {
             "id": 2,
@@ -489,9 +490,10 @@
               1
             ],
             "details": "Implement `async def get_suggestions(self, prefix: str, limit: int = 10) -> List[str]` method. Add early return for empty prefix or prefix < 2 characters to optimize performance. Build Elasticsearch query using multi_match with type='bool_prefix' targeting 'brief_title.suggest', 'brief_title.suggest._2gram', and 'brief_title.suggest._3gram' fields. Use aggregations with 'significant_text' on 'brief_title' field with filter_duplicate_text=True for deduplication. Set size=0 on main query since we only need aggregations. Extract suggestions from aggregations buckets. Apply limit parameter to final results.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with prefix 'can' returns Cancer-related suggestions. Test with prefix 'dia' returns Diabetes suggestions. Verify empty string returns empty list. Verify single character returns empty list. Test response time is under 100ms for acceptable type-ahead UX. Verify no duplicate suggestions in results.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:01:00.945Z"
           },
           {
             "id": 3,
@@ -502,9 +504,10 @@
               2
             ],
             "details": "Extend get_suggestions method with fallback logic triggered when primary aggregation returns empty results. Implement secondary Elasticsearch query using multi_match with type='phrase_prefix' on 'brief_title' and 'official_title' fields. Set _source to only return 'brief_title' for performance. Extract first 6 words from matching titles as suggestion text. Implement case-insensitive deduplication using a seen set (convert to lowercase for comparison). Ensure fallback respects the same limit parameter. Add the fallback results to suggestions list only if primary approach yielded no results.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test fallback triggers when primary query returns empty. Verify deduplication works (same title different case not duplicated). Test that fallback respects limit parameter. Verify extracted suggestions contain meaningful partial titles (first 6 words). Test edge cases like very short titles.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:01:00.949Z"
           },
           {
             "id": 4,
@@ -514,14 +517,16 @@
               1
             ],
             "details": "Implement `async def get_condition_suggestions(self, prefix: str) -> List[str]` method. Define a constant list of common clinical trial conditions: 'Breast Cancer', 'Lung Cancer', 'Diabetes', 'Asthma', 'COVID-19', 'Heart Disease', 'Alzheimer\\'s', 'Melanoma', 'Leukemia', 'Rheumatoid Arthritis', 'Multiple Sclerosis'. Use case-insensitive prefix matching with str.lower().startswith(). Return maximum 5 matching conditions for fast response. This provides instant suggestions without Elasticsearch latency for common conditions. Consider adding this list as a class constant for maintainability.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test 'brea' returns 'Breast Cancer'. Test 'lung' returns 'Lung Cancer'. Test case insensitivity ('DIA' matches 'Diabetes'). Verify maximum 5 results returned. Test no matches returns empty list. Verify response time is near-instant (no ES query).",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:01:00.953Z"
           }
         ],
         "complexity": 4,
         "recommendedSubtasks": 4,
-        "expansionPrompt": "Break down suggestion service into: 1) Create suggestion.py with ES client and index configuration, 2) Implement get_suggestions method using search_as_you_type with bool_prefix multi_match on title suggest fields, 3) Add fallback logic with phrase_prefix query and title extraction for when primary approach returns no results, 4) Create get_condition_suggestions helper with common condition names for fast matching. Each subtask should include deduplication and performance optimization (limit, minimum prefix length)."
+        "expansionPrompt": "Break down suggestion service into: 1) Create suggestion.py with ES client and index configuration, 2) Implement get_suggestions method using search_as_you_type with bool_prefix multi_match on title suggest fields, 3) Add fallback logic with phrase_prefix query and title extraction for when primary approach returns no results, 4) Create get_condition_suggestions helper with common condition names for fast matching. Each subtask should include deduplication and performance optimization (limit, minimum prefix length).",
+        "updatedAt": "2026-02-07T19:01:00.953Z"
       },
       {
         "id": "7",
@@ -878,9 +883,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-07T18:53:51.270Z",
+      "lastModified": "2026-02-07T19:01:00.953Z",
       "taskCount": 10,
-      "completedCount": 5,
+      "completedCount": 6,
       "tags": [
         "master"
       ]
