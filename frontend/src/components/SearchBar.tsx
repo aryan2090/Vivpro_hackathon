@@ -20,6 +20,7 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submittedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,9 +43,11 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
   function handleInputChange(value: string) {
     setQuery(value);
     setSelectedIndex(-1);
+    submittedRef.current = false;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       const results = await getSuggestions(value.trim());
+      if (submittedRef.current) return;
       setSuggestions(results);
       setShowSuggestions(results.length > 0);
     }, 300);
@@ -54,12 +57,18 @@ export default function SearchBar({ onSearch, isLoading }: SearchBarProps) {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    submittedRef.current = true;
+    setSuggestions([]);
     setShowSuggestions(false);
     onSearch(trimmed);
   }
 
   function selectSuggestion(suggestion: string) {
     setQuery(suggestion);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    submittedRef.current = true;
+    setSuggestions([]);
     setShowSuggestions(false);
     onSearch(suggestion);
   }
