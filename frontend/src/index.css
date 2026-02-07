@@ -63,9 +63,41 @@ body {
   animation: slideDown 0.2s ease-out both;
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.4s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fadeIn,
-  .animate-slideDown {
+  .animate-slideDown,
+  .animate-shimmer,
+  .animate-fadeInUp {
     animation: none;
   }
 }

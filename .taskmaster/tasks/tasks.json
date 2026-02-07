@@ -725,7 +725,7 @@
         "dependencies": [
           "8"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -733,9 +733,10 @@
             "description": "Implement the Pagination.tsx component with intelligent page number generation that handles edge cases for first/last pages, ellipsis display for large page counts, and proper disabled states for navigation buttons.",
             "dependencies": [],
             "details": "Create `frontend/src/components/Pagination.tsx` with the following features:\n\n1. **Props interface**: Accept `currentPage`, `totalPages`, and `onPageChange` callback\n2. **Early return**: Return null when `totalPages <= 1` (no pagination needed)\n3. **Dynamic page array generation**:\n   - For 5 or fewer pages: show all pages [1, 2, 3, 4, 5]\n   - When currentPage <= 3: show first 5 pages\n   - When currentPage >= totalPages - 2: show last 5 pages\n   - Otherwise: show currentPage centered with 2 pages on each side\n4. **Previous button**: Disabled when `currentPage === 1`, calls `onPageChange(currentPage - 1)`\n5. **Page number buttons**: Highlight current page with teal-700 background and white text, others have gray border with hover state\n6. **Next button**: Disabled when `currentPage === totalPages`, calls `onPageChange(currentPage + 1)`\n7. **Styling**: Use flex layout with gap-2, centered alignment, mt-8 margin top, rounded-lg buttons with transition-colors\n8. **Accessibility**: Ensure buttons have proper disabled states reflected visually (opacity-50)",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "1. Test with totalPages=1: component should return null\n2. Test with totalPages=5, currentPage=1: should show pages [1,2,3,4,5] with 1 highlighted\n3. Test with totalPages=10, currentPage=1: Previous should be disabled, should show [1,2,3,4,5]\n4. Test with totalPages=10, currentPage=10: Next should be disabled, should show [6,7,8,9,10]\n5. Test with totalPages=20, currentPage=10: should show [8,9,10,11,12]\n6. Verify onPageChange callback fires correctly on button clicks",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:30:17.147Z"
           },
           {
             "id": 2,
@@ -743,9 +744,10 @@
             "description": "Create the ClarificationBanner.tsx component with amber styling that displays clarification questions, extracts potential options from the question text using regex, and triggers refined searches when users select an option.",
             "dependencies": [],
             "details": "Create `frontend/src/components/ClarificationBanner.tsx` with:\n\n1. **Props interface**: Accept `question` string and `onSelection` callback that receives the chosen option\n2. **extractOptions helper function**:\n   - Parse question string for quoted text using regex `/'([^']+)'/g`\n   - Return array of extracted strings with quotes removed\n   - Return empty array if no matches found\n3. **Banner styling**:\n   - Full width with py-4 px-6 padding\n   - Amber color scheme: bg-amber-50, border-y border-amber-200\n   - Add `animate-slideDown` class for entrance animation\n4. **Question display**: Show question text in text-amber-800 font-medium with mb-3 margin\n5. **Option buttons** (only render if options.length > 0):\n   - Wrap in flex container with flex-wrap gap-2\n   - Each button: px-4 py-2, rounded-full, bg-white, border border-amber-300\n   - Text in text-amber-800 with hover:bg-amber-100 transition\n   - onClick calls `onSelection(opt)` with the option text\n6. **Add slideDown animation to tailwind.config.js** if not already present:\n   ```js\n   animation: { slideDown: 'slideDown 0.3s ease-out' },\n   keyframes: { slideDown: { from: { opacity: 0, transform: 'translateY(-10px)' }, to: { opacity: 1, transform: 'translateY(0)' } } }\n   ```",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "1. Test with question containing quoted options: \"Did you mean 'diabetes' or 'diabetic'?\" should extract ['diabetes', 'diabetic']\n2. Test with question without quotes: should render question but no option buttons\n3. Verify onSelection callback is called with correct option text when button clicked\n4. Verify amber color scheme renders correctly\n5. Test slideDown animation triggers on component mount\n6. Test with multiple options (3+) to verify flex-wrap behavior",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:30:17.151Z"
           },
           {
             "id": 3,
@@ -753,9 +755,10 @@
             "description": "Implement the EmptyState.tsx component with two distinct variants: 'no-results' showing suggested queries and 'error' showing retry functionality, each with appropriate icons, messaging, and interactive elements.",
             "dependencies": [],
             "details": "Create `frontend/src/components/EmptyState.tsx` with:\n\n1. **Props interface**: `type: 'no-results' | 'error'`, optional `message`, optional `onRetry` callback, optional `onSuggestionClick` callback\n2. **SUGGESTED_QUERIES constant**: Array of example searches like [\"Phase 3 cancer trials\", \"Recruiting diabetes studies\", \"COVID-19 vaccine trials\"]\n3. **Container styling**: Centered flex column with py-16 px-4\n4. **Icon container**: 24x24 (w-24 h-24) rounded-full bg-gray-100 with centered icon\n   - 'no-results': Search magnifying glass SVG in text-gray-400\n   - 'error': Warning triangle SVG in text-red-400\n5. **Heading**: font-serif text-2xl text-gray-700 mb-2\n   - 'no-results': \"No trials found\"\n   - 'error': \"Something went wrong\"\n6. **Description**: text-gray-500 centered max-w-md mb-6, use message prop or default text\n7. **Error retry button** (only for type='error' when onRetry provided):\n   - px-6 py-2, bg-teal-700 text-white, rounded-lg, hover:bg-teal-800 transition, mb-6\n8. **Suggested queries** (only for type='no-results' when onSuggestionClick provided):\n   - \"Try one of these searches:\" label in text-sm text-gray-500 mb-3\n   - Flex-wrap container with gap-2 and justify-center\n   - Each suggestion: px-4 py-2, rounded-full, border border-teal-300, text-teal-700, hover:bg-teal-50, text-sm",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "1. Test 'no-results' variant renders search icon, correct heading, and suggestions\n2. Test 'error' variant renders warning icon, correct heading, and retry button\n3. Test onRetry callback fires when retry button clicked\n4. Test onSuggestionClick callback fires with query text when suggestion clicked\n5. Test custom message prop overrides default text\n6. Test retry button only renders when onRetry is provided\n7. Test suggestions only render when onSuggestionClick is provided",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:30:17.153Z"
           },
           {
             "id": 4,
@@ -765,9 +768,10 @@
               1
             ],
             "details": "Create `frontend/src/components/ResultsList.tsx` with:\n\n1. **Imports**: Import TrialResult type, ResultCard component, and Pagination component\n2. **Props interface**: `results: TrialResult[]`, `total: number`, `page: number`, `pageSize: number`, `onPageChange: (page: number) => void`\n3. **Calculate totalPages**: `Math.ceil(total / pageSize)`\n4. **Container**: `w-full max-w-4xl mx-auto`\n5. **Result count display**: \n   - `<p className=\"text-sm text-gray-500 mb-4\">`\n   - Text: \"Showing {results.length} of {total.toLocaleString()} trials\"\n6. **Results container**: `<div className=\"space-y-4\">`\n7. **Map ResultCards**: Pass `trial` and `index` to each ResultCard\n   - The index is used by ResultCard for staggered animation delay\n   - Key should be `trial.nct_id`\n8. **Pagination component**: Pass currentPage={page}, totalPages, onPageChange\n9. **Staggered animation in ResultCard** (verify/update ResultCard.tsx):\n   - Add animation delay based on index: `style={{ animationDelay: `${index * 100}ms` }}`\n   - Add CSS class `animate-fadeInUp` with animation-fill-mode: both\n10. **Add fadeInUp animation to tailwind config** if needed:\n    ```js\n    animation: { fadeInUp: 'fadeInUp 0.4s ease-out' },\n    keyframes: { fadeInUp: { from: { opacity: 0, transform: 'translateY(20px)' }, to: { opacity: 1, transform: 'translateY(0)' } } }\n    ```",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "1. Test ResultsList renders correct number of ResultCard components\n2. Test result count shows correct \"Showing X of Y trials\" text with proper formatting\n3. Test staggered animation - first card animates immediately, second after 100ms, etc.\n4. Test Pagination receives correct props (currentPage, totalPages)\n5. Test onPageChange callback propagates to Pagination correctly\n6. Test with empty results array - should render empty container with Pagination\n7. Test with large total (1000+) formats with toLocaleString()",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:30:17.156Z"
           },
           {
             "id": 5,
@@ -780,9 +784,10 @@
               4
             ],
             "details": "Update `frontend/src/App.tsx` with complete state management:\n\n1. **Imports**: useState, useCallback from React; all components (SearchBar, QueryInterpretation, ResultsList, ClarificationBanner, EmptyState); searchTrials from api service; SearchResponse type\n2. **AppState type**: `'idle' | 'loading' | 'results' | 'no-results' | 'error'`\n3. **State variables**:\n   - `state: AppState` initialized to 'idle'\n   - `response: SearchResponse | null` initialized to null\n   - `currentQuery: string` initialized to ''\n   - `error: string | null` initialized to null\n4. **handleSearch callback** (memoized with useCallback):\n   - Accept query string and optional page (default 1)\n   - Set currentQuery, setState to 'loading', clear error\n   - Try/catch block: call searchTrials, setResponse, setState based on results.length\n   - Catch: setError with message, setState to 'error'\n5. **handlePageChange callback**: Call handleSearch with currentQuery and page, then `window.scrollTo({ top: 0, behavior: 'smooth' })`\n6. **handleClarification callback**: Call handleSearch with `${currentQuery} ${choice}`\n7. **JSX structure**:\n   - Root: `min-h-screen bg-[#F8F6F3]`\n   - Header: Dynamic padding `py-32` for idle, `py-8` otherwise, with transition-all duration-300\n   - Conditionally render hero text only in idle state\n   - SearchBar always visible, pass isLoading prop\n   - QueryInterpretation when response exists and not idle\n   - ClarificationBanner when response?.clarification exists\n   - Main content: loading skeletons, ResultsList, or EmptyState based on state",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "1. Test initial state is 'idle' with hero text and expanded header\n2. Test search transitions: idle -> loading -> results (with data) or no-results (empty)\n3. Test error state: simulate API failure, verify error message displays\n4. Test header transition: verify py-32 becomes py-8 on search\n5. Test pagination: verify handlePageChange updates results and scrolls to top\n6. Test clarification: verify handleClarification appends choice to query\n7. Test retry from error state returns to loading then appropriate state\n8. Test suggestion click from EmptyState triggers new search",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:30:17.159Z"
           },
           {
             "id": 6,
@@ -792,14 +797,16 @@
               5
             ],
             "details": "Enhance loading states and header transitions in App.tsx and CSS:\n\n1. **Loading skeletons in App.tsx main content**:\n   - When state === 'loading', render 3 skeleton cards\n   - Each skeleton: `h-32 bg-white rounded-lg animate-pulse`\n   - Wrap in `max-w-4xl mx-auto space-y-4`\n\n2. **Enhanced shimmer animation** (update tailwind.config.js or index.css):\n   ```css\n   @keyframes shimmer {\n     0% { background-position: -200% 0; }\n     100% { background-position: 200% 0; }\n   }\n   .animate-shimmer {\n     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);\n     background-size: 200% 100%;\n     animation: shimmer 1.5s infinite;\n   }\n   ```\n\n3. **Optional: Create SkeletonCard component** for reusability:\n   ```tsx\n   export function SkeletonCard() {\n     return (\n       <div className=\"bg-white rounded-lg p-6 animate-shimmer\">\n         <div className=\"h-4 bg-gray-200 rounded w-3/4 mb-4\" />\n         <div className=\"h-3 bg-gray-200 rounded w-1/2 mb-2\" />\n         <div className=\"h-3 bg-gray-200 rounded w-full\" />\n       </div>\n     );\n   }\n   ```\n\n4. **Header transition refinement**:\n   - Ensure `transition-all duration-300` on header element\n   - Hero content (h1, p) should fade out: add `transition-opacity duration-300` and conditional opacity-0\n   - Consider using `overflow-hidden` with dynamic max-height for smoother collapse\n\n5. **SearchBar position transition**:\n   - Ensure SearchBar smoothly moves from centered (hero) to top position\n   - Use transform or layout animations as needed\n\n6. **Add all required keyframe animations to tailwind.config.js**:\n   - slideDown (for ClarificationBanner)\n   - fadeInUp (for ResultCards)\n   - shimmer (for loading skeletons)",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "1. Test loading state displays 3 skeleton cards with shimmer animation\n2. Test shimmer animation runs continuously (infinite loop)\n3. Test header transition timing - should take 300ms to collapse\n4. Test hero text fades out when transitioning from idle state\n5. Test SearchBar position animates smoothly from center to top\n6. Verify no layout shift or jumpy behavior during state transitions\n7. Test rapid state changes (quick searches) don't cause animation glitches\n8. Verify all animations defined in tailwind.config.js compile correctly",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-07T19:30:17.161Z"
           }
         ],
         "complexity": 7,
         "recommendedSubtasks": 6,
-        "expansionPrompt": "Break down results and state management into: 1) Create Pagination component with dynamic page number generation, edge-case handling (first/last page), and proper button states, 2) Build ClarificationBanner with amber styling, question parsing to extract options, and selection handling that triggers refined search, 3) Create EmptyState component with two variants (no-results, error), suggestion query buttons, and retry functionality, 4) Implement ResultsList component composing ResultCard with staggered animations and result count display, 5) Build App.tsx with complete state machine (idle/loading/results/no-results/error), search handler with pagination support, and smooth scroll on page change, 6) Add skeleton loading states with shimmer animation and header transition (hero to compact). Each subtask should handle all state transitions gracefully."
+        "expansionPrompt": "Break down results and state management into: 1) Create Pagination component with dynamic page number generation, edge-case handling (first/last page), and proper button states, 2) Build ClarificationBanner with amber styling, question parsing to extract options, and selection handling that triggers refined search, 3) Create EmptyState component with two variants (no-results, error), suggestion query buttons, and retry functionality, 4) Implement ResultsList component composing ResultCard with staggered animations and result count display, 5) Build App.tsx with complete state machine (idle/loading/results/no-results/error), search handler with pagination support, and smooth scroll on page change, 6) Add skeleton loading states with shimmer animation and header transition (hero to compact). Each subtask should handle all state transitions gracefully.",
+        "updatedAt": "2026-02-07T19:30:17.161Z"
       },
       {
         "id": "10",
@@ -897,9 +904,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-07T19:20:38.461Z",
+      "lastModified": "2026-02-07T19:30:17.161Z",
       "taskCount": 10,
-      "completedCount": 8,
+      "completedCount": 9,
       "tags": [
         "master"
       ]
